@@ -103,3 +103,6 @@ ujson==5.11.0
 PyJWT==2.10.1
 aiohttp==3.9.3
 python-multipart==0.0.6
+cryptography>=42.0.0
+sentence-transformers>=2.2.0
+torch>=2.0.0
