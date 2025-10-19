@@ -1,0 +1,245 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                           ⚡ DO THIS NOW ⚡                                   ║
+║                     R1 PHASE 1 IMMEDIATE EXECUTION                             ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+🎯 RIGHT NOW (Next 1 hour)
+════════════════════════════════════════════════════════════════════════════════
+
+1️⃣  STAGING DEPLOYMENT (Copy-Paste Commands)
+
+   Set environment:
+   ─────────────────
+   export STAGING_DATABASE_URL="postgresql://user:pass@host:port/dbname"
+
+   Run deployment with artifact capture:
+   ─────────────────────────────────────
+   bash scripts/staging_execution_guide.sh
+
+   Expected output:
+   ────────────────
+   ✅ Migration completed successfully
+   ✅ RLS is ENABLED
+   ✅ All sanity checks PASSED (3/3)
+   ✅ LEAK TEST PASSED - RLS is blocking cross-tenant access
+   🟢 ALL STAGING VALIDATIONS PASSED - READY FOR PRODUCTION
+
+   Artifacts captured in: staging_artifacts_TIMESTAMP/
+   ├─ 00_pre_migration_state.log
+   ├─ 01_migration_output.log
+   ├─ 02_table_structure.log
+   ├─ 03_sanity_checks.log          ← ARTIFACT 1
+   ├─ 04_explain_plans.log          ← ARTIFACT 2
+   └─ 05_leak_test.log              ← ARTIFACT 3
+
+────────────────────────────────────────────────────────────────────────────────
+
+2️⃣  VALIDATE ARTIFACTS (Review Expected Results)
+
+   Artifact 1: Sanity Checks (03_sanity_checks.log)
+   ─────────────────────────────────────────────
+   Look for:
+   ✅ Check 1: RLS is ENABLED
+   ✅ Check 2: RLS policy exists and is active
+   ✅ Check 3: ANN indexes (HNSW/IVFFlat) exist
+   RESULT: 3 of 3 sanity checks PASSED
+
+   If NOT all 3: STOP. Fix issue before proceeding.
+
+   ─────────────────────────────────────────────
+
+   Artifact 2: EXPLAIN Plans (04_explain_plans.log)
+   ───────────────────────────────────────────
+   Look for:
+   - Execution Time: < 150ms (for ANN queries)
+   - Index Scan using idx_memory_chunks_embedding_hnsw
+   - Filter: user_hash = <current value>
+
+   If ANN execution > 150ms: Note for tuning (not blocking)
+
+   ─────────────────────────────────────────────
+
+   Artifact 3: Leak Test (05_leak_test.log)
+   ──────────────────────────────────────
+   Look for:
+   USER_A_SEES: 1 row (their data)
+   USER_B_SEES: 0 rows (RLS blocked) ← CRITICAL
+   LEAK TEST PASSED - RLS is blocking cross-tenant access
+
+   If USER_B_SEES > 0: CRITICAL FAILURE. Do NOT proceed to production.
+                       Investigate RLS policy.
+
+────────────────────────────────────────────────────────────────────────────────
+
+3️⃣  UPLOAD ARTIFACTS (To Deployment Ticket)
+
+   All 3 logs:
+   ──────────
+   staging_artifacts_TIMESTAMP/03_sanity_checks.log
+   staging_artifacts_TIMESTAMP/04_explain_plans.log
+   staging_artifacts_TIMESTAMP/05_leak_test.log
+
+   Upload to: [Deployment Ticket]
+
+   Status update:
+   ──────────
+   ✅ Staging validation PASSED
+   ✅ Ready for production migration (Phase 3)
+
+════════════════════════════════════════════════════════════════════════════════
+
+🚀 PARALLEL EXECUTION (Today - Kick Off Now)
+════════════════════════════════════════════════════════════════════════════════
+
+🔒 TASK B - Security Team (Crypto)
+───────────────────────────────────
+
+Start immediately (3-4 day sprint):
+
+Spec: TASK_B_ENCRYPTION_SPECIFICATION.md
+
+Deliver:
+  src/memory/security.py (120 LOC)
+    ├─ seal(plaintext, aad) → AES-256-GCM
+    ├─ open_sealed(blob, aad) → decryption
+    └─ hmac_user(user_id) → deterministic hash
+
+  tests/memory/test_encryption.py (80 LOC)
+    ├─ Round-trip tests
+    ├─ AAD binding (cross-tenant prevention - CRITICAL)
+    ├─ Tamper detection
+    └─ Throughput >= 5k ops/sec
+
+  Write path integration
+    └─ index_memory_chunk() encrypts & stores
+
+Day 1: seal/open working
+Day 2: Tests passing
+Day 3: Integration complete
+Day 4: Code review + security-approved label
+
+Team assignment: [Security Lead Name]
+
+────────────────────────────────────────────────────────────────────────────────
+
+⚡ TASK C - ML Ops Team (Reranker)
+──────────────────────────────────
+
+Start immediately (2-3 day sprint):
+
+Spec: TASK_C_RERANKER_SPECIFICATION.md
+
+Deliver:
+  GPU provisioned
+    ├─ L40 (preferred) or A100
+    └─ nvidia-smi shows device
+
+  src/memory/rerank.py (80 LOC)
+    ├─ rerank(query, candidates) with circuit breaker
+    ├─ Feature flag RERANK_ENABLED
+    └─ Metrics collection
+
+  tests/memory/test_rerank.py (40 LOC)
+    ├─ Semantic quality
+    ├─ Latency < 150ms (24 candidates)
+    └─ Circuit breaker at 250ms
+
+Day 0-1: GPU provisioned
+Day 1-2: Reranker service working
+Day 2-3: p95 < 150ms verified
+Day 3: Code review + perf-approved label
+
+Team assignment: [ML Ops Lead Name]
+
+════════════════════════════════════════════════════════════════════════════════
+
+✅ IF ALL ARTIFACTS PASS
+════════════════════════════════════════════════════════════════════════════════
+
+Next: Production Migration (Phase 3)
+
+Follow: TASK_A_DEPLOYMENT_CHECKLIST.md Phase 3
+  - Pre-deployment checks
+  - Production migration
+  - Post-deploy validation
+  - 24-hour monitoring
+
+Timeline: 1-2 hours
+Owner: Deployment Lead
+
+Artifact docs:
+  - 03_sanity_checks.log → Proves RLS+policies+indexes
+  - 04_explain_plans.log → Proves ANN performance
+  - 05_leak_test.log → Proves cross-tenant isolation
+
+════════════════════════════════════════════════════════════════════════════════
+
+❌ IF ANY ARTIFACT FAILS
+════════════════════════════════════════════════════════════════════════════════
+
+STOP production migration.
+
+Sanity checks 1-2 failed?
+  → RLS not enabled or policy missing
+  → Action: Review migration output, rollback if needed
+  → Reference: TASK_A_ROLLBACK_PROCEDURE.md
+
+EXPLAIN shows Seq Scan or > 150ms?
+  → Index not being used or performance issue
+  → Action: Check index creation, run VACUUM (ANALYZE)
+  → Re-run staging_execution_guide.sh
+
+Leak test shows USER_B_SEES > 0?
+  → CRITICAL RLS FAILURE
+  → Data leaked across tenants
+  → Action: Investigate RLS policy, DO NOT deploy to production
+  → Reference: TASK_A_ROLLBACK_PROCEDURE.md
+
+════════════════════════════════════════════════════════════════════════════════
+
+📞 CONTACTS (TODAY)
+════════════════════════════════════════════════════════════════════════════════
+
+Deployment Lead: [Name] - Runs staging execution
+Security Lead:   [Name] - Starts TASK B crypto
+ML Ops Lead:     [Name] - Starts TASK C reranker
+DBA:            [Name] - Reviews EXPLAIN plans
+
+════════════════════════════════════════════════════════════════════════════════
+
+🎯 SUCCESS CRITERIA (Today End-of-Day)
+════════════════════════════════════════════════════════════════════════════════
+
+✅ Staging execution completed
+✅ All 3 artifacts captured & reviewed
+✅ All 3 artifacts PASSED
+✅ Artifacts uploaded to deployment ticket
+✅ TASK B crypto team started (seal/open_sealed checkpoint)
+✅ TASK C reranker team started (GPU provisioned checkpoint)
+
+Status: 🟢 READY FOR PRODUCTION MIGRATION + B+C PARALLEL EXECUTION
+
+════════════════════════════════════════════════════════════════════════════════
+
+QUICK REFERENCE
+════════════════════════════════════════════════════════════════════════════════
+
+Staging Execution:
+  bash scripts/staging_execution_guide.sh
+
+Specs (Share with teams):
+  TASK_B_ENCRYPTION_SPECIFICATION.md
+  TASK_C_RERANKER_SPECIFICATION.md
+
+Evidence Validation:
+  STAGING_EVIDENCE_PACKAGE.md
+
+Team Kickoff Orders:
+  TEAM_KICKOFF_ORDERS.md
+
+Production Next Steps:
+  TASK_A_DEPLOYMENT_CHECKLIST.md (Phase 3)
+
+════════════════════════════════════════════════════════════════════════════════
+
+🚀 START NOW. Baton passed. Let's ship it.
