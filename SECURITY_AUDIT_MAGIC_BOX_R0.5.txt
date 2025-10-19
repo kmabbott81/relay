@@ -1,0 +1,1002 @@
+================================================================================
+SECURITY AUDIT: MAGIC BOX (R0.5 PRE-PRODUCTION DEPLOYMENT)
+================================================================================
+Review Date: 2025-10-19
+Reviewed By: Security-Reviewer Agent (Claude Sonnet 4.5)
+Target: Sprint 61a - Magic Box Anonymous Chat Interface
+Scope: Static files (HTML/JS/SW) + Backend API (/api/v1/stream, /magic)
+Commit: main branch (untagged - pre-R0.5)
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+OVERALL VERDICT: BLOCKED - CRITICAL ISSUES FOUND
+
+Risk Level: HIGH
+
+The Magic Box feature demonstrates good security practices in several areas
+(XSS prevention, client-side quota validation, CSP headers) but has CRITICAL
+vulnerabilities that must be resolved before production deployment:
+
+1. NO SERVER-SIDE AUTHENTICATION on /api/v1/stream endpoint
+2. NO SERVER-SIDE RATE LIMITING for anonymous users
+3. CLIENT-SIDE QUOTA ENFORCEMENT ONLY (trivially bypassable)
+4. MISSING INPUT VALIDATION on stream endpoint
+5. INSUFFICIENT ERROR HANDLING (stack traces possible)
+
+Recommendation: DO NOT DEPLOY until CRITICAL and HIGH issues are resolved.
+
+================================================================================
+DETAILED FINDINGS BY CATEGORY
+================================================================================
+
+1. AUTHENTICATION & AUTHORIZATION
+==================================
+
+CRITICAL-1: No Authentication Required on /api/v1/stream
+---------------------------------------------------------
+Location: src/webapi.py lines 1737-1903
+Severity: CRITICAL
+Impact: Resource exhaustion, abuse, cost exploitation
+
+Finding:
+The /api/v1/stream endpoint accepts BOTH GET and POST requests with NO
+authentication decorator (@require_scopes or similar). Any user can call
+this endpoint without any credentials.
+
+Code Evidence:
+```python
+@app.get("/api/v1/stream")
+@app.post("/api/v1/stream")
+async def stream_response(
+    request: Request,
+    user_id: Optional[str] = None,
+    message: Optional[str] = None,
+    ...
+) -> Any:
+    # No @require_scopes decorator
+    # No authentication check
+    user_id = user_id or "anonymous"  # Allows ANY user_id
+```
+
+Attack Scenario:
+1. Attacker bypasses client-side quota by directly calling API
+2. Uses curl/Python script to flood /api/v1/stream with requests
+3. Causes resource exhaustion (OpenAI API costs, server CPU/memory)
+4. No rate limiting enforced (see CRITICAL-2)
+
+Recommended Fix:
+a) Add authentication for non-anonymous users:
+   - Option 1: Require API key for all requests
+   - Option 2: Implement anonymous session token validation server-side
+   - Option 3: Use IP-based rate limiting with strict thresholds
+
+b) Add anonymous session ID validation:
+   ```python
+   async def validate_anonymous_session(session_id: str) -> bool:
+       # Verify session_id format: anon_<valid-uuid>
+       if not session_id.startswith("anon_"):
+           return False
+       # Check session age (7-day expiry) in Redis
+       # Check usage quotas (20/hr, 100 total) in Redis
+       return True
+   ```
+
+c) Move quota enforcement to server-side (REQUIRED):
+   ```python
+   if user_id.startswith("anon_"):
+       quota_check = await check_anonymous_quota(user_id, redis_client)
+       if not quota_check.allowed:
+           raise HTTPException(429, detail=quota_check.reason)
+   ```
+
+
+CRITICAL-2: Client-Side Quota Enforcement Only
+-----------------------------------------------
+Location: static/magic/magic.js lines 73-99
+Severity: CRITICAL
+Impact: Unlimited API usage, cost exploitation
+
+Finding:
+Anonymous usage quotas (20/hr, 100 total) are ONLY checked in JavaScript.
+An attacker can bypass by:
+- Disabling JavaScript
+- Using curl/Postman to call API directly
+- Editing localStorage to reset counters
+
+Code Evidence:
+```javascript
+// Client-side check (lines 73-99)
+canSendMessage() {
+    // Check hourly limit
+    if (this.usage.messagesThisHour.length >= CONFIG.ANON_LIMITS.messagesPerHour) {
+        return { allowed: false, reason: 'hourly_limit', ... };
+    }
+    // Check total limit
+    if (this.usage.totalMessages >= CONFIG.ANON_LIMITS.totalMessages) {
+        return { allowed: false, reason: 'total_limit', ... };
+    }
+    return { allowed: true };
+}
+```
+
+Server-Side Check: MISSING (no quota validation in stream_response())
+
+Attack Scenario:
+```bash
+# Bypass quota entirely
+while true; do
+  curl -X GET "https://relay.app/api/v1/stream?user_id=attacker&message=hi&model=gpt-4o"
+  sleep 0.1
+done
+# Result: Unlimited API calls, bypassing 20/hr and 100 total limits
+```
+
+Recommended Fix:
+Implement server-side quota tracking in Redis:
+```python
+async def check_anonymous_quota(user_id: str, redis: Redis) -> QuotaCheck:
+    if not user_id.startswith("anon_"):
+        return QuotaCheck(allowed=True)
+
+    # Check hourly limit (Redis sorted set)
+    hour_key = f"quota:hourly:{user_id}"
+    now = time.time()
+    one_hour_ago = now - 3600
+
+    # Remove old entries
+    redis.zremrangebyscore(hour_key, 0, one_hour_ago)
+
+    # Count current hour
+    hourly_count = redis.zcard(hour_key)
+    if hourly_count >= 20:
+        return QuotaCheck(allowed=False, reason="hourly_limit", reset_in=...)
+
+    # Check total limit
+    total_key = f"quota:total:{user_id}"
+    total_count = int(redis.get(total_key) or 0)
+    if total_count >= 100:
+        return QuotaCheck(allowed=False, reason="total_limit")
+
+    # Record this request
+    redis.zadd(hour_key, {str(now): now})
+    redis.incr(total_key)
+    redis.expire(hour_key, 3600)
+    redis.expire(total_key, 7 * 24 * 3600)  # 7 days
+
+    return QuotaCheck(allowed=True)
+```
+
+
+HIGH-1: No Rate Limiting on /api/v1/stream
+-------------------------------------------
+Location: src/webapi.py line 1737
+Severity: HIGH
+Impact: DDoS, resource exhaustion
+
+Finding:
+The /api/v1/stream endpoint does NOT use the existing rate limiter
+(src/limits/limiter.py). Other endpoints like /actions/execute DO use it:
+
+```python
+# actions/execute endpoint (line 806):
+limiter = get_rate_limiter()
+limiter.check_limit(workspace_id)
+
+# /api/v1/stream endpoint (line 1737):
+# NO RATE LIMITING AT ALL
+```
+
+Attack Scenario:
+```bash
+# Flood stream endpoint with 1000 requests/sec
+for i in {1..1000}; do
+  curl -X GET "https://relay.app/api/v1/stream?user_id=bot$i&message=flood" &
+done
+# Result: Server CPU exhaustion, OpenAI API quota exhaustion
+```
+
+Recommended Fix:
+Add rate limiting to stream endpoint:
+```python
+@app.get("/api/v1/stream")
+@app.post("/api/v1/stream")
+async def stream_response(request: Request, ...):
+    # Add rate limiting for anonymous users
+    if user_id and user_id.startswith("anon_"):
+        limiter = get_rate_limiter()
+        # Use more aggressive limits for anonymous
+        limiter.check_limit(f"anon:{user_id}", limit_per_min=5)  # 5/min max
+
+    # Continue with stream logic
+```
+
+
+HIGH-2: Session ID Not Validated Server-Side
+---------------------------------------------
+Location: src/webapi.py lines 1773, 1780
+Severity: HIGH
+Impact: Session hijacking, quota bypass
+
+Finding:
+The server accepts ANY user_id value without validation:
+
+```python
+user_id = user_id or body.get("user_id", "anonymous")
+user_id = user_id or "anonymous"
+```
+
+No checks for:
+- Valid UUID format after "anon_" prefix
+- Session existence in server-side store
+- Session age (7-day expiry)
+- Cross-session usage tracking
+
+Attack Scenario:
+1. Attacker generates random session IDs: anon_AAAA, anon_BBBB, anon_CCCC
+2. Each new session ID gets fresh quotas (20/hr, 100 total)
+3. Attacker creates unlimited sessions to bypass quotas
+4. Or: Attacker reuses another user's session ID to share their quota
+
+Recommended Fix:
+```python
+async def validate_session_id(session_id: str, redis: Redis) -> bool:
+    if not session_id.startswith("anon_"):
+        return False
+
+    # Validate UUID format
+    try:
+        uuid_part = session_id[5:]  # Remove "anon_" prefix
+        uuid.UUID(uuid_part)
+    except ValueError:
+        return False
+
+    # Check session exists and is not expired
+    session_key = f"session:{session_id}"
+    session_data = redis.hgetall(session_key)
+
+    if not session_data:
+        # First request for this session - create it
+        redis.hset(session_key, "created_at", int(time.time()))
+        redis.expire(session_key, 7 * 24 * 3600)  # 7 days
+        return True
+
+    # Check if expired (7 days)
+    created_at = int(session_data.get("created_at", 0))
+    if time.time() - created_at > 7 * 24 * 3600:
+        return False
+
+    return True
+```
+
+
+2. API SECURITY (/api/v1/stream)
+================================
+
+HIGH-3: Missing Input Validation
+---------------------------------
+Location: src/webapi.py lines 1785-1786
+Severity: HIGH
+Impact: Injection attacks, resource exhaustion
+
+Finding:
+The endpoint only validates that message is not empty, but does NOT:
+- Limit message length (DoS via huge prompts)
+- Sanitize message content (potential prompt injection)
+- Validate model name (could specify expensive models)
+- Validate stream_id format (could inject special chars)
+
+Code Evidence:
+```python
+if not message:
+    raise HTTPException(status_code=400, detail="message required")
+# No other validation!
+```
+
+Attack Scenarios:
+a) Send 10MB message -> exhaust OpenAI API tokens
+b) Send message with prompt injection: "Ignore previous instructions..."
+c) Send model="gpt-4-turbo" -> force expensive model (if supported)
+
+Recommended Fix:
+```python
+# Add comprehensive input validation
+MAX_MESSAGE_LENGTH = 4000  # ~1000 tokens
+ALLOWED_MODELS = {"gpt-4o-mini", "gpt-4o"}
+
+if not message:
+    raise HTTPException(400, detail="message required")
+
+if len(message) > MAX_MESSAGE_LENGTH:
+    raise HTTPException(400, detail=f"message too long (max {MAX_MESSAGE_LENGTH} chars)")
+
+if model not in ALLOWED_MODELS:
+    raise HTTPException(400, detail=f"invalid model (allowed: {ALLOWED_MODELS})")
+
+# Sanitize message (remove control characters)
+message = "".join(c for c in message if c.isprintable() or c in "\n\t")
+
+# Validate stream_id format (if provided)
+if stream_id and not re.match(r'^stream_[a-z0-9_]+$', stream_id):
+    raise HTTPException(400, detail="invalid stream_id format")
+```
+
+
+MEDIUM-1: No HTTPS Enforcement for EventSource
+-----------------------------------------------
+Location: static/magic/magic.js line 297
+Severity: MEDIUM
+Impact: MITM attacks, session hijacking
+
+Finding:
+EventSource connections are created using relative URLs, which inherit the
+page's protocol. If the page is accessed over HTTP (e.g., during local dev),
+the SSE stream will also be over HTTP, exposing message content.
+
+Code Evidence:
+```javascript
+this.eventSource = new EventSource(connectUrl);
+// connectUrl is relative: /api/v1/stream?...
+// If page is HTTP, EventSource will be HTTP
+```
+
+Recommended Fix:
+a) Force HTTPS in production (webapi.py already has HSTS header)
+b) Add client-side check:
+   ```javascript
+   if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+       console.error('[SECURITY] EventSource requires HTTPS in production');
+       throw new Error('Insecure connection detected');
+   }
+   ```
+
+
+MEDIUM-2: Cost Data Exposure in SSE Stream
+-------------------------------------------
+Location: src/webapi.py lines 1834-1846
+Severity: MEDIUM
+Impact: Information disclosure (business intelligence)
+
+Finding:
+The SSE stream exposes cost_per_token calculations in message_chunk events:
+
+```python
+cost_per_token = 0.00060 / 1000 if model == "gpt-4o-mini" else 0.01000 / 1000
+cost_usd = tokens * cost_per_token
+
+event_data = {
+    "content": chunk,
+    "tokens": tokens,
+    "cost_usd": cost_usd,  # Exposed to client
+}
+```
+
+This reveals:
+- OpenAI API pricing (may change over time)
+- Actual costs incurred by the business
+- Model pricing differentials
+
+Recommendation:
+Consider if cost_usd should be shown to anonymous users. Options:
+a) Show only to authenticated users with billing permissions
+b) Round/obfuscate costs to prevent reverse-engineering pricing
+c) Show token counts only, not dollar amounts
+
+
+LOW-1: Verbose Error Messages
+------------------------------
+Location: src/webapi.py lines 1878-1880
+Severity: LOW
+Impact: Information disclosure
+
+Finding:
+Error events include exception type and message:
+
+```python
+error_data = {"error": str(e), "error_type": type(e).__name__}
+```
+
+This could leak internal implementation details if exceptions are verbose.
+
+Recommended Fix:
+```python
+# Sanitize error messages
+safe_error_msg = "An error occurred. Please try again later."
+if isinstance(e, HTTPException):
+    safe_error_msg = e.detail
+elif isinstance(e, asyncio.TimeoutError):
+    safe_error_msg = "Request timed out"
+
+error_data = {"error": safe_error_msg, "error_type": "StreamError"}
+```
+
+
+3. XSS & INJECTION PREVENTION
+==============================
+
+STATUS: PASS
+
+Finding:
+The Magic Box interface demonstrates excellent XSS prevention practices:
+
+a) ALL user content uses textContent (not innerHTML):
+   ```javascript
+   contentEl.textContent = content;  // Line 847
+   contentEl.textContent = fullResponse;  // Line 728
+   ```
+
+b) No use of innerHTML, eval(), or dangerous DOM manipulation
+c) No external CDN dependencies for DOMPurify (not needed due to textContent)
+d) Cost/latency/token data safely escaped via textContent
+
+Verified Locations:
+- User messages: textContent (line 847)
+- Assistant responses: textContent (line 728)
+- Error messages: textContent (lines 753, 766, 806)
+- Cost pill updates: textContent (lines 873-875)
+- Usage counters: textContent (lines 622, 627)
+
+RESULT: No XSS vulnerabilities found in client-side code.
+
+
+4. CONTENT SECURITY POLICY (CSP)
+=================================
+
+STATUS: PARTIAL PASS (with warnings)
+
+Finding:
+CSP headers are configured in webapi.py lines 193-204:
+
+```python
+csp_directives = [
+    "default-src 'self'",
+    "connect-src 'self' https://relay-production-f2a6.up.railway.app https://*.vercel.app",
+    "img-src 'self' data:",
+    "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+]
+```
+
+GOOD:
+- frame-ancestors 'none' prevents clickjacking
+- connect-src restricts SSE connections to known origins
+- base-uri and form-action prevent injection attacks
+
+WARNINGS:
+a) 'unsafe-inline' in script-src and style-src weakens CSP protection
+   - Recommendation: Use nonces or hashes for inline scripts/styles
+
+b) External CDNs (cdn.tailwindcss.com, cdn.jsdelivr.net) allowed
+   - Risk: If CDN is compromised, attackers can inject malicious JS
+   - Recommendation: Self-host Tailwind CSS or use SRI (Subresource Integrity)
+
+c) No CDNs used in Magic Box (good!) but CSP allows them globally
+
+Recommendation for Magic Box:
+Since index.html has inline styles but NO external CDNs, consider:
+```python
+# Magic Box-specific CSP (tighter than global)
+if request.url.path.startswith("/magic"):
+    csp_directives = [
+        "default-src 'self'",
+        "connect-src 'self' https://relay-production-f2a6.up.railway.app",
+        "img-src 'self' data:",
+        "script-src 'self'",  # No unsafe-inline needed
+        "style-src 'self' 'unsafe-inline'",  # Only for inline styles
+        "frame-ancestors 'none'",
+    ]
+```
+
+
+5. CORS CONFIGURATION
+=====================
+
+STATUS: PASS (with production caveats)
+
+Finding:
+CORS is configured in webapi.py lines 144-168:
+
+```python
+allowed_origins = [
+    "http://localhost:3000",
+    "https://relay-studio-one.vercel.app",
+]
+
+# Allow all origins in development
+if os.getenv("RELAY_ENV") != "production":
+    allowed_origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=False,  # Good: No cookies needed
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Idempotency-Key", "X-Signature", "Authorization"],
+    ...
+)
+```
+
+GOOD:
+- Strict origin whitelist in production
+- allow_credentials=False (no cookie-based auth)
+- Limited methods (GET, POST, OPTIONS only)
+
+CONCERN:
+- /api/v1/stream allows GET requests with query params
+- If CORS allows any origin, attacker's site could:
+  1. Embed EventSource in their page
+  2. Stream responses from user's session
+  3. Read private data (if user is authenticated)
+
+CURRENT STATUS: Not exploitable because:
+- No authentication on /api/v1/stream (so no user-specific data)
+- Anonymous sessions don't expose PII
+
+FUTURE RISK:
+If Magic Box adds authenticated sessions, must ensure:
+- SSE streams require authentication headers (not just query params)
+- CORS policy restricts EventSource access to trusted origins
+
+
+6. DATA PRIVACY & STORAGE
+==========================
+
+MEDIUM-3: Session Data Stored in localStorage
+----------------------------------------------
+Location: static/magic/magic.js lines 38-58, 60-71
+Severity: MEDIUM
+Impact: XSS-based session hijacking
+
+Finding:
+Anonymous session IDs and usage data are stored in localStorage:
+
+```javascript
+localStorage.setItem('relay_anon_id', JSON.stringify({
+    id,
+    created: Date.now()
+}));
+
+localStorage.setItem('relay_anon_usage', JSON.stringify(this.usage));
+```
+
+localStorage is vulnerable to XSS:
+- If an attacker injects JS (e.g., via compromised CDN), they can:
+  1. Read all localStorage data (session IDs, usage counts)
+  2. Exfiltrate to attacker's server
+  3. Hijack user sessions by replaying session IDs
+
+Mitigation:
+Since Magic Box uses textContent (no XSS risk), and no external CDNs are
+loaded in index.html, the XSS attack surface is minimal. HOWEVER, if future
+changes introduce XSS, localStorage will be compromised.
+
+Recommended Alternative:
+Use sessionStorage (cleared on tab close) or httpOnly cookies (not accessible
+to JS at all):
+
+```javascript
+// Option 1: sessionStorage (clears on tab close)
+sessionStorage.setItem('relay_anon_id', ...);
+
+// Option 2: httpOnly cookie (set by server, JS cannot read)
+// Server sets: Set-Cookie: relay_anon_id=...; HttpOnly; Secure; SameSite=Strict
+```
+
+Note: httpOnly cookies require server-side session validation (recommended).
+
+
+LOW-2: Message Content Not Encrypted at Rest
+---------------------------------------------
+Location: In-memory only (not persisted)
+Severity: LOW
+Impact: Memory dumps could expose user messages
+
+Finding:
+SSE stream state stores message chunks in memory:
+
+```python
+self.chunks_sent.append(
+    {"event_id": self.event_id - 1, "content": content, ...}
+)
+```
+
+Global state: _stream_states = {} (line 1718)
+
+Since chunks are in-memory only (not written to disk), the risk is limited to:
+- Memory dumps during debugging
+- Server compromise (attacker with root access)
+
+Recommendation:
+a) For R0.5 (anonymous, non-sensitive): Accept risk (MEDIUM-LOW)
+b) For future authenticated sessions: Encrypt chunks before storing
+c) Set TTL on _stream_states entries (avoid memory leak)
+
+
+LOW-3: No User Data Deletion Mechanism (GDPR)
+----------------------------------------------
+Location: static/magic/magic.js
+Severity: LOW
+Impact: GDPR Article 17 (Right to Erasure) non-compliance
+
+Finding:
+Anonymous users have no way to delete their session data:
+- localStorage persists for 7 days
+- No "Clear My Data" button in UI
+- No server-side deletion endpoint
+
+Recommended Fix:
+Add a UI button to clear localStorage:
+```javascript
+clearMyData() {
+    if (confirm("Delete all your session data? You'll start fresh with a new session.")) {
+        localStorage.removeItem('relay_anon_id');
+        localStorage.removeItem('relay_anon_usage');
+        window.location.reload();
+    }
+}
+```
+
+Add to index.html:
+```html
+<button id="clear-data-btn" style="position:fixed; bottom:1rem; right:1rem; opacity:0.5;">
+    Clear My Data
+</button>
+```
+
+
+7. CRYPTOGRAPHY & SECRETS
+==========================
+
+STATUS: PASS
+
+Finding:
+a) Session ID generation uses crypto.randomUUID() (line 51):
+   ```javascript
+   const id = `anon_${crypto.randomUUID()}`;
+   ```
+   - crypto.randomUUID() is cryptographically secure (Web Crypto API)
+   - UUID v4 has 122 bits of entropy (sufficient for session IDs)
+
+b) No hardcoded secrets in static files (verified)
+
+c) No custom cryptographic implementations (GOOD)
+
+RESULT: Cryptographic practices are sound.
+
+
+8. DEPENDENCIES & SUPPLY CHAIN
+===============================
+
+STATUS: PASS
+
+Finding:
+Magic Box has ZERO external dependencies:
+- No CDNs loaded in index.html
+- No npm packages (pure vanilla JS)
+- Service worker is self-contained
+- No third-party libraries (DOMPurify, jQuery, React, etc.)
+
+This is excellent for supply chain security. The attack surface is minimal.
+
+HOWEVER: The global CSP allows cdn.tailwindcss.com and cdn.jsdelivr.net.
+Recommendation: Remove these from CSP if not used by Magic Box.
+
+
+9. ERROR HANDLING & INFORMATION DISCLOSURE
+===========================================
+
+MEDIUM-4: Stack Traces May Be Exposed
+--------------------------------------
+Location: src/webapi.py lines 1874-1880
+Severity: MEDIUM
+Impact: Information disclosure (internal paths, library versions)
+
+Finding:
+The error handler re-raises exceptions after logging:
+
+```python
+except Exception as e:
+    state.is_closed = True
+    error_event_id = state.next_event_id()
+    error_data = {"error": str(e), "error_type": type(e).__name__}
+    sse_event = await format_sse_event("error", error_data, error_event_id)
+    yield sse_event
+```
+
+If str(e) includes a stack trace (e.g., from OpenAI SDK), this will be
+sent to the client, potentially revealing:
+- Internal file paths (/app/src/webapi.py)
+- Library versions (openai==1.2.3)
+- Database connection strings (if in exception message)
+
+Recommended Fix:
+```python
+except Exception as e:
+    state.is_closed = True
+    error_event_id = state.next_event_id()
+
+    # Sanitize error message
+    safe_error = "An error occurred. Please try again."
+    if isinstance(e, OpenAIError):
+        safe_error = "AI service temporarily unavailable"
+    elif isinstance(e, HTTPException):
+        safe_error = e.detail
+
+    error_data = {"error": safe_error, "error_type": "StreamError"}
+    sse_event = await format_sse_event("error", error_data, error_event_id)
+    yield sse_event
+
+    # Log full error server-side only
+    _LOG.error(f"Stream error for {stream_id}: {e}", exc_info=True)
+```
+
+
+LOW-4: Debug Logging May Leak User Messages
+--------------------------------------------
+Location: static/magic/magic.js lines 295, 306, 317, 332, etc.
+Severity: LOW
+Impact: Message content in browser console logs
+
+Finding:
+Debug logging includes message content:
+
+```javascript
+console.log(`[SSE] Message (id: ${event.lastEventId}): ${event.type}`);
+console.log(`[SSE] Chunk (id: ${event.lastEventId})`);
+```
+
+While this doesn't expose data to the network, it may:
+- Appear in crash reports sent to error tracking services (Sentry, etc.)
+- Be visible to browser extensions
+- Persist in browser devtools history
+
+Recommendation:
+Remove or guard debug logs in production:
+```javascript
+const DEBUG = window.location.hostname === 'localhost';
+
+if (DEBUG) {
+    console.log(`[SSE] Message: ${event.type}`);
+}
+```
+
+
+10. COMPLIANCE (GDPR, CCPA, PCI-DSS)
+====================================
+
+GDPR Compliance Assessment
+--------------------------
+
+[ ] User Consent for Data Processing
+    - MISSING: No cookie banner or privacy policy link in UI
+    - REQUIRED: Add privacy policy link and consent banner before R0.5
+
+[ ] Right to Erasure (Article 17)
+    - PARTIAL: localStorage can be cleared manually (browser settings)
+    - RECOMMENDED: Add "Clear My Data" button (see LOW-3)
+
+[ ] Data Retention Policy
+    - IMPLEMENTED: 7-day session expiry (lines 42-47 in magic.js)
+    - GOOD: Enforced client-side, but NOT enforced server-side
+    - ACTION: Add server-side session cleanup job
+
+[ ] Cross-Border Data Transfers
+    - UNKNOWN: Is relay-production-f2a6.up.railway.app in EU or US?
+    - ACTION: Document data residency and add SCCs if needed
+
+[ ] Data Breach Notification
+    - MISSING: No incident response plan documented
+    - ACTION: Add security incident runbook
+
+CCPA Compliance Assessment
+--------------------------
+
+[ ] Privacy Policy
+    - MISSING: No "Do Not Sell My Personal Information" link
+    - ACTION: Add privacy policy with CCPA disclosures
+
+[ ] Data Deletion Requests
+    - PARTIAL: Same as GDPR Right to Erasure
+    - ACTION: Add deletion request form
+
+PCI-DSS Compliance Assessment
+-----------------------------
+
+Not applicable (no payment card data processed).
+
+
+================================================================================
+SECURITY FINDINGS SUMMARY
+================================================================================
+
+CRITICAL ISSUES: 2
+------------------
+1. CRITICAL-1: No authentication on /api/v1/stream endpoint
+2. CRITICAL-2: Client-side quota enforcement only (trivially bypassable)
+
+HIGH ISSUES: 3
+--------------
+1. HIGH-1: No rate limiting on /api/v1/stream endpoint
+2. HIGH-2: Session ID not validated server-side
+3. HIGH-3: Missing input validation (message length, model name, etc.)
+
+MEDIUM ISSUES: 4
+----------------
+1. MEDIUM-1: No HTTPS enforcement for EventSource
+2. MEDIUM-2: Cost data exposure in SSE stream
+3. MEDIUM-3: Session data stored in localStorage (XSS risk)
+4. MEDIUM-4: Stack traces may be exposed to clients
+
+LOW ISSUES: 4
+-------------
+1. LOW-1: Verbose error messages
+2. LOW-2: Message content not encrypted at rest
+3. LOW-3: No user data deletion mechanism (GDPR)
+4. LOW-4: Debug logging may leak user messages
+
+PASSES: 3
+---------
+1. XSS & Injection Prevention: Excellent (textContent throughout)
+2. Cryptography: Secure (crypto.randomUUID())
+3. Dependencies: Zero external dependencies (minimal supply chain risk)
+
+
+================================================================================
+MUST-DO BEFORE PRODUCTION (R0.5 BLOCKERS)
+================================================================================
+
+1. SERVER-SIDE QUOTA ENFORCEMENT (CRITICAL)
+   - Move anonymous quota checks to server-side (Redis-backed)
+   - Validate session IDs on server
+   - Enforce 20/hr and 100 total limits in /api/v1/stream
+
+2. RATE LIMITING ON /api/v1/stream (CRITICAL)
+   - Add rate limiter check (5/min for anonymous users)
+   - Return 429 with Retry-After header
+   - Log rate limit violations for monitoring
+
+3. INPUT VALIDATION (HIGH)
+   - Limit message length (4000 chars max)
+   - Validate model name (whitelist: gpt-4o-mini, gpt-4o)
+   - Sanitize stream_id format
+   - Add request body size limit (already exists: 512 KiB)
+
+4. AUTHENTICATION OR IP-BASED THROTTLING (CRITICAL)
+   - Option 1: Require anonymous session token validation
+   - Option 2: Implement IP-based rate limiting with strict thresholds
+   - Option 3: Add CAPTCHA after N requests from same IP
+
+5. ERROR HANDLING HARDENING (MEDIUM)
+   - Sanitize error messages (no stack traces to clients)
+   - Log full errors server-side only
+   - Use generic error messages for client
+
+
+================================================================================
+SHOULD-DO BEFORE R0.5 (NOT BLOCKERS, BUT RECOMMENDED)
+================================================================================
+
+1. GDPR COMPLIANCE
+   - Add privacy policy link in UI
+   - Add "Clear My Data" button
+   - Document data retention policy (7 days)
+   - Add cookie consent banner (if cookies are used in future)
+
+2. HTTPS ENFORCEMENT
+   - Add client-side check for HTTPS in production
+   - Ensure HSTS header is present (already implemented)
+
+3. CSP TIGHTENING
+   - Remove unused CDN allowances (tailwindcss, jsdelivr)
+   - Use nonces for inline styles instead of 'unsafe-inline'
+
+4. SESSION MANAGEMENT
+   - Add server-side session validation
+   - Use httpOnly cookies instead of localStorage (future enhancement)
+   - Add session cleanup job (delete expired sessions from Redis)
+
+5. COST DATA PRIVACY
+   - Consider hiding cost_usd from anonymous users
+   - Or: Round costs to prevent pricing reverse-engineering
+
+
+================================================================================
+NICE-TO-HAVE (FUTURE HARDENING)
+================================================================================
+
+1. Subresource Integrity (SRI) for external scripts (if CDNs are added)
+2. Content sniffing protection (already has X-Content-Type-Options: nosniff)
+3. Referrer policy hardening (already has Referrer-Policy: no-referrer)
+4. Add security.txt file with security contact info
+5. Implement Content Security Policy reporting (report-uri directive)
+6. Add monitoring for quota bypass attempts
+7. Implement CAPTCHA for high-traffic IPs
+8. Add end-to-end encryption for message content (future authenticated mode)
+
+
+================================================================================
+COMPLIANCE CHECKLIST
+================================================================================
+
+[x] No hardcoded secrets in code
+    - Verified: No secrets in static/magic/* or src/webapi.py
+
+[x] HTTPS enforced (HSTS header present)
+    - Verified: Strict-Transport-Security header in webapi.py
+
+[x] XSS prevention (textContent used throughout)
+    - Verified: No innerHTML usage in magic.js
+
+[x] CSRF protection (no state-changing GET requests)
+    - Verified: SSE uses GET but is read-only; POST requires JSON body
+
+[ ] GDPR-ready (BLOCKED - see findings above)
+    - Missing: Privacy policy, consent banner, data deletion UI
+
+[ ] CCPA-ready (BLOCKED - see findings above)
+    - Missing: Privacy policy with CCPA disclosures
+
+[ ] Authentication enforced (BLOCKED - CRITICAL ISSUE)
+    - Missing: Server-side authentication or session validation
+
+[ ] Rate limiting enforced (BLOCKED - CRITICAL ISSUE)
+    - Missing: Rate limiting on /api/v1/stream endpoint
+
+[ ] Input validation enforced (BLOCKED - HIGH ISSUE)
+    - Missing: Message length, model name, stream_id validation
+
+
+================================================================================
+FINAL RECOMMENDATION
+================================================================================
+
+VERDICT: BLOCKED - DO NOT DEPLOY TO PRODUCTION
+
+The Magic Box feature has excellent XSS prevention and cryptographic practices,
+but CRITICAL security gaps in server-side validation make it unsuitable for
+production deployment:
+
+1. Any user can flood the /api/v1/stream endpoint with unlimited requests
+2. Quota enforcement is client-side only and trivially bypassable
+3. No rate limiting protects against DDoS or abuse
+4. Input validation is insufficient (unbounded message length, model name)
+
+RECOMMENDED ACTION PLAN:
+
+Phase 1 (MUST-DO - Estimated 4-8 hours):
+- Implement server-side quota tracking in Redis
+- Add rate limiting to /api/v1/stream (5/min for anonymous)
+- Add input validation (message length, model name, stream_id)
+- Add session ID validation on server-side
+- Sanitize error messages (no stack traces to clients)
+
+Phase 2 (SHOULD-DO - Estimated 2-4 hours):
+- Add privacy policy link and GDPR compliance UI
+- Tighten CSP (remove unused CDN allowances)
+- Add HTTPS enforcement check in client
+- Implement session cleanup job (Redis TTL)
+
+Phase 3 (NICE-TO-HAVE - Future sprints):
+- Add CAPTCHA for high-traffic IPs
+- Implement monitoring for abuse detection
+- Add security.txt file
+- Encrypt message content at rest (for authenticated mode)
+
+APPROVAL STATUS:
+- Current state: SECURITY REVIEW FAILED
+- After Phase 1 fixes: Re-review required before deployment
+- After Phase 2 fixes: Production-ready with monitoring
+
+SECURITY SIGN-OFF: NOT APPROVED
+
+Reviewed by: Security-Reviewer Agent (Claude Sonnet 4.5)
+Date: 2025-10-19
+Next Review: After Phase 1 fixes are implemented
+
+================================================================================
+END OF SECURITY AUDIT
+================================================================================

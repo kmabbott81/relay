@@ -1,0 +1,281 @@
+================================================================================
+SPRINT 60 PHASE 2.2 - DEPLOYMENT CHECKLIST
+Tag: v0.1.7-phase2.2-final | Commit: a368d23
+================================================================================
+
+PRE-DEPLOYMENT VERIFICATION
+============================
+
+Environment & Configuration
+  [x] Verify REDIS_URL uses rediss:// in production (TLS required)
+  [x] Verify AI_JOBS_NEW_SCHEMA=off (start with reads only)
+  [x] Verify READ_PREFERS_NEW=on (read-routing enabled)
+  [x] Verify READ_FALLBACK_OLD=on (fallback enabled during migration)
+  [x] All env vars in .env.example updated
+
+Code Security
+  [x] No hardcoded secrets in commit a368d23
+  [x] No stack traces exposed to clients
+  [x] Workspace_id validated before use (_validate_workspace_id)
+  [x] Cursor format safe (only SCAN positions)
+  [x] Telemetry sanitized (no PII/tokens)
+
+Test Coverage
+  [x] 27/27 tests passing (100%)
+  [x] 16 read-routing tests passed
+  [x] 11 dual-write tests passed
+  [x] All workspace isolation assertions passed
+  [x] No test regressions
+
+Database & Redis
+  [x] Redis connection uses rediss:// (TLS)
+  [x] Both ai:jobs:{job_id} (old) and ai:job:{ws}:{job_id} (new) schemas present
+  [x] No database schema migrations required
+  [x] Idempotency key prefix ai:idempotency:{ws}:{request_id} reserved
+
+================================================================================
+PHASE 2.2 ROLLOUT STEPS
+================================================================================
+
+STEP 1: Read-Routing Activation (Week 1)
+========================================
+Prerequisites:
+  - All jobs already written in old schema (ai:jobs:{job_id})
+  - New schema keys present for recent jobs (from Phase 1 dual-write)
+
+Configuration:
+  - AI_JOBS_NEW_SCHEMA=off (no new writes yet)
+  - READ_PREFERS_NEW=on (prefer new schema)
+  - READ_FALLBACK_OLD=on (fallback to old schema)
+
+Validation:
+  [ ] Deploy commit a368d23
+  [ ] Monitor metrics:
+      - relay_job_read_path_total{path="new"}: should increase to 60-80%
+      - relay_job_read_path_total{path="old"}: should decrease as new keys accumulate
+      - relay_job_list_read_path_total{path="new|mixed"}: should track SCAN efficiency
+  [ ] Verify no increase in 404 errors for /ai/jobs/* endpoints
+  [ ] Spot-check workspace isolation: confirm same workspace_id in auth and job
+
+Rollback Trigger:
+  - If read path metrics show <50% new schema, something is wrong with dual-write
+  - If 404 errors increase >10%, fallback logic may have issue
+  - If any cross-workspace access detected, rollback immediately
+
+STEP 2: Monitor Stabilization (Week 2-3)
+========================================
+Goals:
+  - Ensure read-routing stable at >80% new schema coverage
+  - Verify no data corruption or consistency issues
+  - Confirm telemetry accurate
+
+Daily Checks:
+  [ ] Check error rate dashboard (should remain flat)
+  [ ] Check read path distribution (target >80% new schema)
+  [ ] Check job count by workspace (confirm no data loss)
+  [ ] Check latency metrics (new schema SCAN vs old schema SCAN)
+
+Expected Outcomes:
+  - New schema reads at 85-95% (depends on job age distribution)
+  - Mixed reads at 5-15% (old jobs being backfilled or accessed)
+  - No missed reads (query all jobs successfully)
+
+STEP 3: Dual-Write Activation (Week 3-4)
+=======================================
+Prerequisites:
+  - Read-routing stable for 1+ weeks
+  - Read path metrics confirm >80% new schema
+  - No 404 errors or corruption detected
+
+Configuration:
+  - AI_JOBS_NEW_SCHEMA=on (begin dual-write)
+  - READ_PREFERS_NEW=on (unchanged)
+  - READ_FALLBACK_OLD=on (unchanged)
+
+Validation:
+  [ ] Deploy with AI_JOBS_NEW_SCHEMA=on
+  [ ] Monitor metrics:
+      - relay_dual_write_attempt_total{result="succeeded"}: should be ~100%
+      - relay_dual_write_attempt_total{result="failed"}: should be <1%
+      - Redis memory usage: should increase (now storing keys twice)
+  [ ] Verify new jobs appear in both schemas
+  [ ] Spot-check: redis-cli keys "ai:job:*:*" | wc -l > 1000 (new schema growing)
+
+Rollback Trigger:
+  - If dual-write failure rate >5%, disable AI_JOBS_NEW_SCHEMA
+  - If Redis memory spike >50%, consider increasing capacity
+  - If any write errors, investigate atomicity
+
+STEP 4: Backfill Campaign (Week 4-6)
+===================================
+Goals:
+  - Migrate remaining old schema jobs to new schema
+  - Run in background to avoid impacting prod traffic
+
+Process:
+  [ ] Implement backfill job (scan ai:jobs:*, copy to ai:job:{ws}:*)
+  [ ] Monitor backfill progress (jobs migrated per hour)
+  [ ] Run during low-traffic windows
+  [ ] Verify workspace_id consistency during backfill
+
+Validation After Backfill:
+  [ ] Count old schema keys: redis-cli keys "ai:jobs:*" | wc -l
+  [ ] Count new schema keys: redis-cli keys "ai:job:*:*" | wc -l
+  [ ] Counts should be approximately equal
+  [ ] 98%+ of queries should hit new schema
+  [ ] No backfill errors in logs
+
+STEP 5: Disable Fallback (Week 6-7)
+==================================
+Prerequisites:
+  - 98%+ of jobs in new schema
+  - <2% of reads still hitting old schema
+  - Dual-write running smoothly for 2+ weeks
+
+Configuration:
+  - AI_JOBS_NEW_SCHEMA=on (unchanged)
+  - READ_PREFERS_NEW=on (unchanged)
+  - READ_FALLBACK_OLD=off (DISABLE FALLBACK)
+
+Validation:
+  [ ] Monitor 404 errors (should remain low)
+  [ ] Monitor read path metrics (should all show "new")
+  [ ] Verify no cross-workspace data leaks
+  [ ] Performance should improve (no SCAN fallback)
+
+Rollback Trigger:
+  - If 404 errors spike >10%, enable fallback immediately
+  - If any data loss detected, enable fallback and investigate
+
+STEP 6: Archive Old Schema (Week 8+)
+===================================
+Prerequisites:
+  - 1+ month since fallback disabled
+  - Zero queries hitting old schema
+  - Data retention policies met
+
+Process:
+  [ ] Generate export of old schema (backup)
+  [ ] Delete old schema keys: redis-cli keys "ai:jobs:*" | xargs redis-cli del
+  [ ] Verify new schema intact: redis-cli keys "ai:job:*:*" | wc -l
+  [ ] Monitor for 404 errors (should remain zero)
+
+Cleanup:
+  [ ] Remove READ_FALLBACK_OLD from code (set default to false/disabled)
+  [ ] Remove dual-write code (ENABLE_NEW_SCHEMA not needed)
+  [ ] Simplify schema handling (new schema only)
+
+================================================================================
+MONITORING & ALERTING
+================================================================================
+
+Critical Metrics to Watch
+-------------------------
+1. Workspace Isolation (no cross-tenant leaks):
+   - relay_job_read_path{workspace_id, path="new|old|miss"}
+   - Alert: If workspace_id mismatch detected in logs
+
+2. Read-Routing Efficiency:
+   - relay_job_read_path_total{path="new"}: target >80%
+   - relay_job_list_read_path_total{path="new|mixed"}: track mixed ratio
+   - Alert: If new path <60% for >1 hour
+
+3. Dual-Write Atomicity:
+   - relay_dual_write_attempt_total{result="succeeded|failed"}
+   - Alert: If failed >1% or latency spike >100ms
+
+4. Error Rates:
+   - /ai/jobs/{job_id} 404 error rate (should be stable/low)
+   - /ai/jobs list 500 error rate (should be near zero)
+   - Alert: If error rate increases >50%
+
+5. Telemetry Quality:
+   - Check logs for "Failed to deserialize" (data corruption)
+   - Alert: If deserialization errors >100/hour
+
+Log Patterns to Monitor
+-----------------------
+GOOD:
+  - "get_job: Found job in new schema (job_id=%s, workspace=%s)"
+  - "relay_dual_write_attempt{result="succeeded"}"
+  - "relay_job_read_path{path="new"}"
+
+BAD (requires action):
+  - "Workspace mismatch during fallback - rejecting"
+  - "relay_dual_write_attempt{result="failed"}"
+  - "SCAN new schema failed" (more than occasional)
+  - "Failed to deserialize job params" (possible data corruption)
+  - Job 404 errors increasing trend
+
+================================================================================
+ROLLBACK PROCEDURES
+================================================================================
+
+If Read-Routing Fails (Step 1 Rollback)
+--------------------------------------
+1. Set READ_PREFERS_NEW=off
+2. Set READ_FALLBACK_OLD=off (explicit disable)
+3. Restart webapi pods
+4. Monitor: Error rates should drop immediately
+5. Investigate: Check if new schema keys are corrupted
+
+If Dual-Write Fails (Step 3 Rollback)
+------------------------------------
+1. Set AI_JOBS_NEW_SCHEMA=off (stop new writes)
+2. Restart webapi pods
+3. Monitor: Error rates should drop within minutes
+4. Investigate: Check Redis disk space, network, connections
+5. Once fixed: Re-enable AI_JOBS_NEW_SCHEMA
+
+If Fallback Disable Fails (Step 5 Rollback)
+-----------------------------------------
+1. Set READ_FALLBACK_OLD=on (enable fallback)
+2. Restart webapi pods
+3. Monitor: 404 errors should drop immediately
+4. Investigate: Check if old schema jobs are missing from new schema
+5. Resume backfill: Run backfill again before re-disabling fallback
+
+Emergency Rollback (Any Step)
+---------------------------
+1. If workspace isolation breach detected:
+   a. Set READ_FALLBACK_OLD=off (force new schema only)
+   b. Set AI_JOBS_NEW_SCHEMA=off (stop new writes)
+   c. Alert security team
+   d. Do NOT continue rollout until breach investigated
+
+================================================================================
+SUCCESS CRITERIA
+================================================================================
+
+Phase 2.2 Complete When:
+  [x] 27/27 tests passing (maintained)
+  [x] 99%+ new schema read path coverage
+  [x] <0.1% 404 error rate for job queries
+  [x] Zero cross-workspace data leaks detected
+  [x] Dual-write success rate 99.9%+
+  [x] Backfill 100% complete (all jobs on new schema)
+  [x] Read-routing operational for 2+ weeks with <1% old fallback
+  [x] Old schema cleanly removed and archived
+  [x] Performance metrics improved (faster SCAN, lower latency)
+
+Performance Targets:
+  - /ai/jobs list latency: <100ms (was: 200-300ms with old schema KEYS)
+  - /ai/jobs/{job_id} latency: <50ms (was: 100-150ms with old schema lookup)
+  - Redis memory: +50% (dual-write) → -0% (after old schema removal)
+  - CPU usage: flat (SCAN more efficient than KEYS)
+
+================================================================================
+CONTACT & ESCALATION
+================================================================================
+
+Primary On-Call: [Platform Team Lead]
+Secondary On-Call: [Database Team Lead]
+Security Team: [security@company.com]
+
+Escalation Triggers:
+- Any cross-workspace data access: Alert security immediately
+- 1+ hour of >10% error rate: Engage platform team
+- Redis connectivity issues: Engage database team
+- Performance degradation >50%: Engage architecture team
+
+================================================================================

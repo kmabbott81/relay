@@ -56,7 +56,13 @@
       "Bash(git merge --no-ff origin/main -m \"$(cat <<''EOF''\nMerge branch ''origin/main'' into sprint-59/s59-01-metrics-workspace\n\nResolves conflicts by keeping S59-05 hotfix implementation:\n- Keeps Sprint 58 Slice 5 validation (strict extra=''forbid'', params constraints, action_id regex)\n- Keeps workspace-scoped /ai/jobs endpoints with cursor-based pagination\n- Keeps telemetry recording with workspace_id labels\n- Keeps PII redaction (params excluded from job summaries)\n- Integrates Sprint 55 Week 3+ changes from main branch\n\nS59-05 hotfix maintains:\n- SCAN pattern: ai:job:* (with application-layer workspace filtering)\n- count=limit*2 buffer for cross-workspace filtering overhead\n- Exception chaining for cursor injection prevention\n- Generic error messages (log internally, return to client)\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git diff:*)",
       "Bash(git show:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git merge-base:*)",
+      "Bash(git config:*)",
+      "Bash(git branch:*)",
+      "Bash(git rev-list:*)",
+      "Bash(/tmp/comprehensive_validator.sh:*)"
     ],
     "deny": [],
     "ask": []
