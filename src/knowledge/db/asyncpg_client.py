@@ -91,7 +91,8 @@ async def init_schema() -> None:
     except Exception as e:
         logger.error(f"Schema initialization error: {e}")
     finally:
-        await conn.close()
+        # CRITICAL: Release connection back to pool (not close)
+        await _pool.release(conn)
 
 
 async def set_rls_context(conn: asyncpg.Connection, user_hash: str) -> None:

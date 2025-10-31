@@ -12,6 +12,7 @@ Tests verify:
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 
 from src.knowledge.api import check_jwt_and_get_user_hash
 from src.knowledge.db.asyncpg_client import (
@@ -157,15 +158,17 @@ async def test_rls_context_required_or_401():
 
     Security Property: Authentication - unauthenticated requests rejected upfront.
     """
-    # Missing JWT
+    # Missing JWT - verify_supabase_jwt raises, which is caught and re-raised as HTTPException(401)
     with patch("src.stream.auth.verify_supabase_jwt", side_effect=ValueError("Invalid token")):
-        with pytest.raises(ValueError):
+        with pytest.raises(HTTPException) as exc_info:
             await check_jwt_and_get_user_hash(
                 MagicMock(
                     headers={"Authorization": "Bearer invalid_token"},
                     scope={"user": None},
                 )
             )
+        # Verify it's a 401 unauthorized error
+        assert exc_info.value.status_code == 401
 
 
 @pytest.mark.asyncio
