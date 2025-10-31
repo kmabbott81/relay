@@ -18,46 +18,18 @@ from src.knowledge.schemas import (
     SearchRequest,
     SearchResponse,
 )
+from src.knowledge.suggestions import suggestion_for
 from src.memory.rls import hmac_user
 from src.monitoring.metrics_adapter import (
     record_api_error,
+    record_file_upload,
+    record_vector_search,
+    record_index_operation,
 )
 from src.stream.auth import verify_supabase_jwt
 
 # Initialize router
 router = APIRouter(prefix="/api/v2/knowledge", tags=["Knowledge API"])
-
-
-# No-op metrics stub (Phase 3: wire to R1 collectors via adapter)
-class _MetricsStub:
-    """Stub for metrics calls; all delegate to adapter or no-op"""
-
-    def record_api_error(self, code: str) -> None:
-        pass
-
-    def record_file_upload_error(self, reason: str) -> None:
-        pass
-
-    def record_file_upload(self, status: str, *args, **kwargs) -> None:
-        pass
-
-    def record_embedding_operation(self, model: str, status: str) -> None:
-        pass
-
-    def record_vector_search(self, status: str) -> None:
-        pass
-
-    def record_file_list_operation(self, status: str) -> None:
-        pass
-
-    def record_rls_violation(self, op: str) -> None:
-        pass
-
-    def record_file_deletion(self, status: str) -> None:
-        pass
-
-
-metrics = _MetricsStub()
 
 
 # ============================================================================
@@ -161,11 +133,14 @@ async def upload_file(
         # 2. Rate limiting (per-user Redis bucket)
         is_limited, status = await check_rate_limit_and_get_status(user_hash, user_tier="free")
         if is_limited:
-            metrics.record_api_error("rate_limit_exceeded")
+            record_api_error("rate_limit_exceeded", 429, request_id=request_id)
             response.status_code = 429
             response.headers["Retry-After"] = str(status["retry_after"])
             await add_rate_limit_headers(response, status)
-            raise HTTPException(status_code=429, detail="Rate limit exceeded: 100 uploads/hour") from None
+            raise HTTPException(
+                status_code=429,
+                detail=suggestion_for(429, "rate_limit_exceeded", status["retry_after"]),
+            ) from None
 
         # 3. File validation
         MIME_WHITELIST = {
@@ -180,7 +155,7 @@ async def upload_file(
         }
 
         if file.content_type not in MIME_WHITELIST:
-            metrics.record_file_upload_error("invalid_mime_type")
+            record_api_error("invalid_mime_type", 400, request_id=request_id)
             raise HTTPException(
                 status_code=400, detail="Invalid file type. Allowed: PDF, DOCX, XLSX, TXT, MD, PNG, JPG, WEBP"
             ) from None
@@ -225,7 +200,11 @@ async def upload_file(
 
         # 5. Return 202 Accepted
         await add_rate_limit_headers(response, status)
-        metrics.record_file_upload("success", source, file.content_type)
+        record_file_upload(
+            file_size_bytes=file_size,
+            mime_type=file.content_type or "application/octet-stream",
+            request_id=request_id,
+        )
 
         return FileUploadResponse(
             file_id=file_id,
@@ -238,7 +217,7 @@ async def upload_file(
     except HTTPException:
         raise
     except Exception:
-        metrics.record_file_upload_error("unknown_error")
+        record_file_upload_error("unknown_error")
         raise HTTPException(status_code=500, detail="Internal server error") from None
 
 
@@ -271,7 +250,10 @@ async def index_file(
             response.status_code = 429
             response.headers["Retry-After"] = str(status["retry_after"])
             await add_rate_limit_headers(response, status)
-            raise HTTPException(status_code=429, detail="Rate limit exceeded") from None
+            raise HTTPException(
+                status_code=429,
+                detail=suggestion_for(429, "rate_limit_exceeded", status["retry_after"]),
+            ) from None
 
         # 2. Check ownership (RLS should prevent seeing other users' files, but be explicit)
         # TODO: Fetch file from DB with RLS
@@ -311,7 +293,7 @@ async def index_file(
         # )
 
         await add_rate_limit_headers(response, status)
-        metrics.record_embedding_operation(body.embedding_model, "success")
+        record_index_operation(operation="embed", item_count=0)
 
         return FileIndexResponse(
             file_id=body.file_id,
@@ -327,7 +309,7 @@ async def index_file(
     except HTTPException:
         raise
     except Exception:
-        metrics.record_api_error("index_error")
+        record_api_error("index_error", 500)
         raise HTTPException(status_code=500, detail="Internal server error") from None
 
 
@@ -359,7 +341,10 @@ async def search_knowledge(
             response.status_code = 429
             response.headers["Retry-After"] = str(status["retry_after"])
             await add_rate_limit_headers(response, status)
-            raise HTTPException(status_code=429, detail="Rate limit exceeded: 1000 queries/hour") from None
+            raise HTTPException(
+                status_code=429,
+                detail=suggestion_for(429, "rate_limit_exceeded", status["retry_after"]),
+            ) from None
 
         # 3. Generate or use provided embedding
         # TODO: If no query_embedding, call embedding service
@@ -393,7 +378,7 @@ async def search_knowledge(
         #         raise HTTPException(status_code=404, detail="File not found") from None
 
         await add_rate_limit_headers(response, status)
-        metrics.record_vector_search("success")
+        record_vector_search(query_tokens=len(body.query.split()), results_count=0, latency_ms=0)
 
         return SearchResponse(
             query=body.query,
@@ -407,7 +392,7 @@ async def search_knowledge(
     except HTTPException:
         raise
     except Exception:
-        metrics.record_api_error("search_error")
+        record_api_error("search_error", 500)
         raise HTTPException(status_code=500, detail="Internal server error") from None
 
 
@@ -439,7 +424,10 @@ async def list_files(
             response.status_code = 429
             response.headers["Retry-After"] = str(status["retry_after"])
             await add_rate_limit_headers(response, status)
-            raise HTTPException(status_code=429, detail="Rate limit exceeded") from None
+            raise HTTPException(
+                status_code=429,
+                detail=suggestion_for(429, "rate_limit_exceeded", status["retry_after"]),
+            ) from None
 
         # 2. Query with RLS
         # TODO: SELECT * FROM files WHERE user_hash = %s LIMIT %s OFFSET %s
@@ -457,7 +445,7 @@ async def list_files(
         # )
 
         await add_rate_limit_headers(response, status)
-        metrics.record_file_list_operation("success")
+        record_index_operation(operation="list_files", item_count=0)
 
         return FileListResponse(
             files=[],  # TODO: Return actual files
@@ -472,7 +460,7 @@ async def list_files(
     except HTTPException:
         raise
     except Exception:
-        metrics.record_api_error("list_error")
+        record_api_error("list_error", 500)
         raise HTTPException(status_code=500, detail="Internal server error") from None
 
 
@@ -506,7 +494,10 @@ async def delete_file(
             response.status_code = 429
             response.headers["Retry-After"] = str(status["retry_after"])
             await add_rate_limit_headers(response, status)
-            raise HTTPException(status_code=429, detail="Rate limit exceeded") from None
+            raise HTTPException(
+                status_code=429,
+                detail=suggestion_for(429, "rate_limit_exceeded", status["retry_after"]),
+            ) from None
 
         # 2. Explicit ownership check (even though RLS will prevent deletion otherwise)
         # Code shows intent: JWT + explicit check + RLS (defense in depth)
@@ -516,7 +507,6 @@ async def delete_file(
         #     file_id
         # )
         # if file_owner != user_hash:
-        #     metrics.record_rls_violation("delete")
         #     raise HTTPException(status_code=403, detail="You do not have permission to delete this file") from None
         # For Phase 2: JWT validation + RLS policy enforces ownership check (deferred DB call to Phase 3)
 
@@ -529,12 +519,12 @@ async def delete_file(
         # )
 
         await add_rate_limit_headers(response, status)
-        metrics.record_file_deletion("success")
+        record_index_operation(operation="delete_file", item_count=1)
 
     except HTTPException:
         raise
     except Exception:
-        metrics.record_api_error("delete_error")
+        record_api_error("delete_error", 500)
         raise HTTPException(status_code=500, detail="Internal server error") from None
 
 
