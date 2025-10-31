@@ -1,0 +1,871 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Memory APIs",
+    "description": "R1 Task D - Memory chunk indexing and retrieval",
+    "version": "v1.0.0-phase4"
+  },
+  "paths": {
+    "/api/v1/memory/api/v1/memory/index": {
+      "post": {
+        "tags": [
+          "Memory",
+          "memory"
+        ],
+        "summary": "Insert/upsert memory chunk",
+        "description": "Insert or upsert a memory chunk with semantic embedding.\n\nSecurity:\n- Validates JWT and extracts user_id\n- Sets RLS context (app.user_hash = hmac_user(user_id))\n- Encrypts text/metadata with AES-256-GCM + AAD binding\n\nPerformance Target:\n- p95 \u2264 750ms (end-to-end, including embedding API)\n\nExample:\n    POST /memory/index\n    Authorization: Bearer <token>\n    {\n        \"user_id\": \"user_123\",\n        \"text\": \"Long chunk text...\",\n        \"metadata\": {\"title\": \"...\", \"source\": \"...\"},\n        \"model\": \"text-embedding-3-small\"\n    }\n\n    Response:\n    {\n        \"id\": \"mem_uuid\",\n        \"created_at\": \"2025-10-20T...\",\n        \"indexed_at\": \"2025-10-20T...\",\n        \"chunk_index\": 0,\n        \"status\": \"indexed\"\n    }",
+        "operationId": "memory_index_api_v1_memory_api_v1_memory_index_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IndexRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied (RLS or AAD validation failed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/memory/api/v1/memory/query": {
+      "post": {
+        "tags": [
+          "Memory",
+          "memory"
+        ],
+        "summary": "Semantic search with optional reranking",
+        "description": "Query memory by semantic similarity.\n\nFlow:\n1. Verify JWT and set RLS context\n2. Generate query embedding\n3. ANN search (HNSW) with RLS filter\n4. Decrypt top-k results with AAD validation (fail-closed on mismatch)\n5. Optionally rerank with cross-encoder (circuit breaker: 250ms timeout)\n\nSecurity:\n- RLS ensures only user's chunks visible\n- AAD validation prevents cross-user access even if DB is compromised\n- Fail-closed: any AAD mismatch returns 403\n\nPerformance Target:\n- p95 \u2264 350ms (including reranking if enabled, with circuit breaker)\n\nCircuit Breaker:\n- If reranking exceeds 250ms, skip CE and return ANN order (fail-open)\n- Preserves TTFV budget under high load\n\nExample:\n    POST /memory/query\n    Authorization: Bearer <token>\n    {\n        \"user_id\": \"user_123\",\n        \"query\": \"How do I reset my password?\",\n        \"k\": 10,\n        \"rerank\": true\n    }\n\n    Response:\n    {\n        \"results\": [\n            {\n                \"id\": \"mem_uuid\",\n                \"text\": \"Password reset steps...\",\n                \"score\": 0.92,\n                \"rank\": 1,\n                \"reranked\": true,\n                \"original_rank\": 3\n            }\n        ],\n        \"count\": 1,\n        \"total_available\": 23,\n        \"latency_breakdown\": {\n            \"embedding_ms\": 120,\n            \"ann_search_ms\": 45,\n            \"reranking_ms\": 89,\n            \"decryption_ms\": 15,\n            \"total_ms\": 269\n        }\n    }",
+        "operationId": "memory_query_api_v1_memory_api_v1_memory_query_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied (RLS or AAD validation failed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/memory/api/v1/memory/summarize": {
+      "post": {
+        "tags": [
+          "Memory",
+          "memory"
+        ],
+        "summary": "Compress memory into summary",
+        "description": "Summarize a set of memory chunks.\n\nFlow:\n1. Verify JWT and set RLS context\n2. Fetch chunks from DB (RLS-filtered)\n3. Decrypt with AAD validation (fail-closed)\n4. Call summarization LLM\n5. Extract entities and key decisions\n\nSecurity:\n- RLS ensures only user's chunks accessible\n- AAD validation on every chunk (any mismatch = 403)\n- Summarization prompt includes user_hash to prevent injection\n\nPerformance Target:\n- p95 \u2264 1000ms (dominated by LLM API call)\n\nExample:\n    POST /memory/summarize\n    Authorization: Bearer <token>\n    {\n        \"user_id\": \"user_123\",\n        \"chunk_ids\": [\"mem_uuid1\", \"mem_uuid2\"],\n        \"style\": \"bullet_points\",\n        \"max_tokens\": 500\n    }",
+        "operationId": "memory_summarize_api_v1_memory_api_v1_memory_summarize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummarizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummarizeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied (RLS or AAD validation failed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/memory/api/v1/memory/entities": {
+      "post": {
+        "tags": [
+          "Memory",
+          "memory"
+        ],
+        "summary": "Extract named entities",
+        "description": "Extract and rank named entities from memory.\n\nFlow:\n1. Verify JWT and set RLS context\n2. If chunk_ids provided: fetch and decrypt (AAD validation)\n3. If text provided: use directly (already trusted)\n4. Run NER extraction\n5. Filter by entity_types and min_frequency\n6. Rank by frequency\n\nSecurity:\n- RLS ensures only user's chunks accessible\n- AAD validation on each chunk\n- No PII in response by default\n\nPerformance Target:\n- p95 \u2264 500ms (local NER model)\n\nExample:\n    POST /memory/entities\n    Authorization: Bearer <token>\n    {\n        \"user_id\": \"user_123\",\n        \"chunk_ids\": [\"mem_uuid\"],\n        \"entity_types\": [\"person\", \"org\"],\n        \"min_frequency\": 1\n    }",
+        "operationId": "memory_entities_api_v1_memory_api_v1_memory_entities_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntitiesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntitiesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied (RLS or AAD validation failed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service temporarily unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EntitiesRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "User Id",
+            "description": "User identifier"
+          },
+          "chunk_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Ids",
+            "description": "Specific chunk IDs to extract from"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text",
+            "description": "Or provide raw text"
+          },
+          "entity_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Types",
+            "description": "Filter by entity type: person, org, location, product"
+          },
+          "min_frequency": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Min Frequency",
+            "description": "Min occurrences to include",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "EntitiesRequest",
+        "description": "Request to extract named entities from memory."
+      },
+      "EntitiesResponse": {
+        "properties": {
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/Entity"
+            },
+            "type": "array",
+            "title": "Entities"
+          },
+          "extraction_time_ms": {
+            "type": "integer",
+            "title": "Extraction Time Ms"
+          },
+          "model_used": {
+            "type": "string",
+            "title": "Model Used"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entities",
+          "extraction_time_ms",
+          "model_used"
+        ],
+        "title": "EntitiesResponse",
+        "description": "Response from entities endpoint."
+      },
+      "Entity": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "frequency": {
+            "type": "integer",
+            "title": "Frequency"
+          },
+          "contexts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contexts"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "frequency",
+          "confidence"
+        ],
+        "title": "Entity",
+        "description": "Named entity."
+      },
+      "ErrorResponse": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "description": "Error message"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Error code: AUTH_REQUIRED, PERMISSION_DENIED, VALIDATION_ERROR, etc."
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id",
+            "description": "Correlation ID for debugging"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail",
+          "code"
+        ],
+        "title": "ErrorResponse",
+        "description": "Standard error response."
+      },
+      "IndexRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "User Id",
+            "description": "User identifier"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 50000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Chunk text"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object",
+                "maxProperties": 10000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata",
+            "description": "Optional metadata (JSON)"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z0-9_-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "description": "Embedding model (whitelisted)",
+            "default": "text-embedding-3-small"
+          },
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id",
+            "description": "Source document ID"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(api|chat|email|upload)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Source type: api, chat, email, upload",
+            "default": "api"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Search tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "text"
+        ],
+        "title": "IndexRequest",
+        "description": "Request to insert/upsert a memory chunk."
+      },
+      "IndexResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Chunk UUID"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "description": "ISO timestamp"
+          },
+          "indexed_at": {
+            "type": "string",
+            "title": "Indexed At",
+            "description": "ISO timestamp"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "title": "Chunk Index",
+            "description": "Position in document"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "indexed, updated, or skipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "indexed_at",
+          "chunk_index",
+          "status"
+        ],
+        "title": "IndexResponse",
+        "description": "Response from index endpoint."
+      },
+      "QueryRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "User Id",
+            "description": "User identifier"
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query",
+            "description": "Search query"
+          },
+          "k": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "K",
+            "description": "Results to return",
+            "default": 24
+          },
+          "rerank": {
+            "type": "boolean",
+            "title": "Rerank",
+            "description": "Enable cross-encoder reranking",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "query"
+        ],
+        "title": "QueryRequest",
+        "description": "Request to query memory by semantic similarity."
+      },
+      "QueryResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/QueryResult"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "description": "Results returned"
+          },
+          "total_available": {
+            "type": "integer",
+            "title": "Total Available",
+            "description": "Total matches available"
+          },
+          "latency_breakdown": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Breakdown",
+            "description": "Latency by component (ms)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "results",
+          "count",
+          "total_available"
+        ],
+        "title": "QueryResponse",
+        "description": "Response from query endpoint."
+      },
+      "QueryResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "reranked": {
+            "type": "boolean",
+            "title": "Reranked"
+          },
+          "original_rank": {
+            "type": "integer",
+            "title": "Original Rank"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "score",
+          "rank",
+          "reranked",
+          "original_rank"
+        ],
+        "title": "QueryResult",
+        "description": "Single result from query."
+      },
+      "SummarizeRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "User Id",
+            "description": "User identifier"
+          },
+          "chunk_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Chunk Ids",
+            "description": "Chunk IDs to summarize"
+          },
+          "style": {
+            "type": "string",
+            "pattern": "^(bullet_points|narrative|key_takeaways)$",
+            "title": "Style",
+            "description": "Summary style",
+            "default": "bullet_points"
+          },
+          "max_tokens": {
+            "type": "integer",
+            "maximum": 2000.0,
+            "minimum": 50.0,
+            "title": "Max Tokens",
+            "description": "Max tokens in summary",
+            "default": 500
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "chunk_ids"
+        ],
+        "title": "SummarizeRequest",
+        "description": "Request to summarize memory chunks."
+      },
+      "SummarizeResponse": {
+        "properties": {
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/Entity"
+            },
+            "type": "array",
+            "title": "Entities"
+          },
+          "key_decisions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Key Decisions"
+          },
+          "tokens_used": {
+            "type": "integer",
+            "title": "Tokens Used"
+          },
+          "processing_time_ms": {
+            "type": "integer",
+            "title": "Processing Time Ms"
+          },
+          "model_used": {
+            "type": "string",
+            "title": "Model Used"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "tokens_used",
+          "processing_time_ms",
+          "model_used"
+        ],
+        "title": "SummarizeResponse",
+        "description": "Response from summarize endpoint."
+      }
+    }
+  }
+}

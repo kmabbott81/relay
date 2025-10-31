@@ -1,0 +1,873 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Relay Knowledge API",
+    "description": "File ingestion and vector search with JWT+RLS+AAD security",
+    "version": "2.0.0"
+  },
+  "paths": {
+    "/api/v2/knowledge/upload": {
+      "post": {
+        "tags": [
+          "Knowledge API"
+        ],
+        "summary": "Upload File",
+        "description": "Upload a file for knowledge ingestion.\nReturns 202 Accepted with file_id; processing happens asynchronously.\n\nSecurity:\n- JWT validation required\n- File size limit: 50MB\n- MIME type whitelist enforced\n- Metadata AAD-encrypted with user_hash binding\n- RLS enforced at insert time",
+        "operationId": "upload_file_api_v2_knowledge_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_file_api_v2_knowledge_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/knowledge/index": {
+      "post": {
+        "tags": [
+          "Knowledge API"
+        ],
+        "summary": "Index File",
+        "description": "Index a file: extract \u2192 chunk \u2192 embed \u2192 store vectors.\n\nSecurity:\n- JWT + RLS (owner-only check)\n- AAD binding on metadata\n- Circuit breaker for embedding service failure",
+        "operationId": "index_file_api_v2_knowledge_index_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileIndexRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileIndexResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/knowledge/search": {
+      "post": {
+        "tags": [
+          "Knowledge API"
+        ],
+        "summary": "Search Knowledge",
+        "description": "Vector similarity search over indexed embeddings.\n\nSecurity:\n- JWT + RLS (only own files visible)\n- AAD verification on metadata decryption",
+        "operationId": "search_knowledge_api_v2_knowledge_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/knowledge/files": {
+      "get": {
+        "tags": [
+          "Knowledge API"
+        ],
+        "summary": "List Files",
+        "description": "List user's files (RLS-isolated).\n\nSecurity:\n- JWT + RLS (only own files returned)",
+        "operationId": "list_files_api_v2_knowledge_files_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/knowledge/files/{file_id}": {
+      "delete": {
+        "tags": [
+          "Knowledge API"
+        ],
+        "summary": "Delete File",
+        "description": "Delete file and cascade delete embeddings.\n\nSecurity:\n- JWT + RLS (owner-only)\n- Explicit ownership check before cascade delete\n- AAD verification before deletion",
+        "operationId": "delete_file_api_v2_knowledge_files__file_id__delete",
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "File Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Knowledge API"
+        ],
+        "summary": "Handle Invalid Endpoint",
+        "description": "Catch unsupported operations",
+        "operationId": "handle_invalid_endpoint_api_v2_knowledge_files__file_id__post",
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "File Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_upload_file_api_v2_knowledge_upload_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "default": "upload"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "default": "[]"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_file_api_v2_knowledge_upload_post"
+      },
+      "ChunkStrategy": {
+        "type": "string",
+        "enum": [
+          "smart",
+          "fixed_size",
+          "semantic"
+        ],
+        "title": "ChunkStrategy",
+        "description": "Chunking strategy for text splitting"
+      },
+      "EmbeddingModel": {
+        "type": "string",
+        "enum": [
+          "ada-002",
+          "local",
+          "custom"
+        ],
+        "title": "EmbeddingModel",
+        "description": "Embedding model selection"
+      },
+      "FileIndexRequest": {
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "File Id",
+            "description": "File ID from upload response"
+          },
+          "chunk_strategy": {
+            "$ref": "#/components/schemas/ChunkStrategy",
+            "description": "Text chunking strategy",
+            "default": "smart"
+          },
+          "chunk_overlap": {
+            "type": "integer",
+            "maximum": 500.0,
+            "minimum": 0.0,
+            "title": "Chunk Overlap",
+            "description": "Overlap between chunks in tokens",
+            "default": 100
+          },
+          "embedding_model": {
+            "$ref": "#/components/schemas/EmbeddingModel",
+            "description": "Embedding model to use",
+            "default": "ada-002"
+          },
+          "rerank": {
+            "type": "boolean",
+            "title": "Rerank",
+            "description": "Enable reranking",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_id"
+        ],
+        "title": "FileIndexRequest",
+        "description": "Request model for POST /api/v2/knowledge/index",
+        "example": {
+          "chunk_overlap": 100,
+          "chunk_strategy": "smart",
+          "embedding_model": "ada-002",
+          "file_id": "550e8400-e29b-41d4-a716-446655440000",
+          "rerank": true
+        }
+      },
+      "FileIndexResponse": {
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "File Id",
+            "description": "File ID indexed"
+          },
+          "chunks_created": {
+            "type": "integer",
+            "title": "Chunks Created",
+            "description": "Number of chunks created"
+          },
+          "tokens_processed": {
+            "type": "integer",
+            "title": "Tokens Processed",
+            "description": "Total tokens processed"
+          },
+          "embedding_latency_ms": {
+            "type": "integer",
+            "title": "Embedding Latency Ms",
+            "description": "Embedding generation latency"
+          },
+          "embedding_model_used": {
+            "type": "string",
+            "title": "Embedding Model Used",
+            "description": "Embedding model used"
+          },
+          "vectors_stored": {
+            "type": "integer",
+            "title": "Vectors Stored",
+            "description": "Vectors successfully stored"
+          },
+          "file_url": {
+            "type": "string",
+            "title": "File Url",
+            "description": "URL to access file metadata"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Indexing status",
+            "default": "indexed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_id",
+          "chunks_created",
+          "tokens_processed",
+          "embedding_latency_ms",
+          "embedding_model_used",
+          "vectors_stored",
+          "file_url"
+        ],
+        "title": "FileIndexResponse",
+        "description": "Response for POST /api/v2/knowledge/index (200 OK)"
+      },
+      "FileListResponse": {
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FileMetadata"
+            },
+            "type": "array",
+            "title": "Files",
+            "description": "File list"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total file count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "description": "Page limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset",
+            "description": "Page offset"
+          },
+          "next_page_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Page Url",
+            "description": "Next page URL"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "FileListResponse",
+        "description": "Response for GET /api/v2/knowledge/files (200 OK)"
+      },
+      "FileMetadata": {
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "File Id",
+            "description": "File ID"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "File title"
+          },
+          "source": {
+            "$ref": "#/components/schemas/FileSource",
+            "description": "Upload source"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes",
+            "description": "File size in bytes"
+          },
+          "chunks_count": {
+            "type": "integer",
+            "title": "Chunks Count",
+            "description": "Number of chunks"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "Creation timestamp"
+          },
+          "indexed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indexed At",
+            "description": "Indexing completion time"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "description": "File tags"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "File metadata URL"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_id",
+          "title",
+          "source",
+          "size_bytes",
+          "chunks_count",
+          "created_at",
+          "url"
+        ],
+        "title": "FileMetadata",
+        "description": "File metadata in list response"
+      },
+      "FileSource": {
+        "type": "string",
+        "enum": [
+          "upload",
+          "api",
+          "email",
+          "slack"
+        ],
+        "title": "FileSource",
+        "description": "Source of file upload"
+      },
+      "FileUploadResponse": {
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "File Id",
+            "description": "Unique file ID"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Processing status",
+            "default": "queued"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id",
+            "description": "Request ID for tracing"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Status message",
+            "default": "File queued for processing"
+          },
+          "expected_completion_ms": {
+            "type": "integer",
+            "title": "Expected Completion Ms",
+            "description": "Estimated completion time (ms)",
+            "default": 5000
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_id",
+          "request_id"
+        ],
+        "title": "FileUploadResponse",
+        "description": "Response for POST /api/v2/knowledge/upload (202 Accepted)"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "SearchRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Query",
+            "description": "Search query"
+          },
+          "query_embedding": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query Embedding",
+            "description": "Pre-computed embedding (1536-dim for ada-002)"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filters",
+            "description": "Search filters"
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "description": "Number of results to return",
+            "default": 10
+          },
+          "similarity_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Similarity Threshold",
+            "description": "Minimum similarity score (0.0-1.0)",
+            "default": 0.7
+          },
+          "include_metadata": {
+            "type": "boolean",
+            "title": "Include Metadata",
+            "description": "Include metadata in results",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "SearchRequest",
+        "description": "Request model for POST /api/v2/knowledge/search",
+        "example": {
+          "filters": {
+            "source": "upload",
+            "tags": [
+              "finance"
+            ]
+          },
+          "query": "financial metrics",
+          "similarity_threshold": 0.7,
+          "top_k": 10
+        }
+      },
+      "SearchResponse": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "Original query"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SearchResultItem"
+            },
+            "type": "array",
+            "title": "Results",
+            "description": "Search results"
+          },
+          "total_results": {
+            "type": "integer",
+            "title": "Total Results",
+            "description": "Total matching results"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms",
+            "description": "Query latency (ms)"
+          },
+          "embedding_model_used": {
+            "type": "string",
+            "title": "Embedding Model Used",
+            "description": "Embedding model used"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit",
+            "description": "Whether result was from cache",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "results",
+          "total_results",
+          "latency_ms",
+          "embedding_model_used"
+        ],
+        "title": "SearchResponse",
+        "description": "Response for POST /api/v2/knowledge/search (200 OK)"
+      },
+      "SearchResultItem": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank",
+            "description": "Rank in result set (1-indexed)"
+          },
+          "chunk_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Chunk Id",
+            "description": "Chunk ID"
+          },
+          "file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "File Id",
+            "description": "Parent file ID"
+          },
+          "file_title": {
+            "type": "string",
+            "title": "File Title",
+            "description": "File title"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Chunk text content"
+          },
+          "similarity_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Similarity Score",
+            "description": "Cosine similarity score"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "title": "Chunk Index",
+            "description": "Chunk index in file"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "description": "Chunk metadata"
+          },
+          "position_in_file": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position In File",
+            "description": "Position in file (page, section, etc.)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "chunk_id",
+          "file_id",
+          "file_title",
+          "text",
+          "similarity_score",
+          "chunk_index",
+          "metadata"
+        ],
+        "title": "SearchResultItem",
+        "description": "Single result from vector search"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

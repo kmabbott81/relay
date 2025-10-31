@@ -1,0 +1,7 @@
+Canary Load Test Results
+========================
+Total Requests: 10
+Successful (2xx): 10
+Success Ratio: 1.0000 (target: >= 0.996 = 99.6%)
+p95 TTFV (ms): 174.204 (target: <= 1500ms)
+Status: PASS ✅

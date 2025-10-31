@@ -1,0 +1,68 @@
+groups:
+  - name: relay_canary_guardrails
+    interval: 30s
+    rules:
+      # TTFV Guardrail: p95 > 1500ms triggers rollback
+      - alert: TTFVBreach
+        expr: relay:ttfv_p95_ms:5m > 1500
+        for: 5m
+        labels:
+          severity: critical
+          action: rollback
+        annotations:
+          summary: "TTFV p95 latency exceeds 1500ms"
+          description: "p95 latency {{ $value }}ms > 1500ms threshold. AUTO-ROLLBACK TRIGGERED."
+
+      # SSE Success Guardrail: < 99.6% triggers rollback
+      - alert: SSESuccessBreach
+        expr: relay:sse_success_ratio:5m < 0.996
+        for: 5m
+        labels:
+          severity: critical
+          action: rollback
+        annotations:
+          summary: "SSE success rate below 99.6%"
+          description: "SSE success {{ $value | humanizePercentage }} < 99.6%. AUTO-ROLLBACK TRIGGERED."
+
+      # RLS Errors Guardrail: ANY errors trigger immediate rollback
+      - alert: RLSErrorsDetected
+        expr: relay:rls_errors_5m > 0
+        for: 1m
+        labels:
+          severity: critical
+          action: rollback
+          security: true
+        annotations:
+          summary: "RLS errors detected - SECURITY BREACH"
+          description: "{{ $value }} RLS errors in 5m. IMMEDIATE ROLLBACK + SECURITY ALERT."
+
+      # ANN Latency Warning: > 200ms (warning only)
+      - alert: ANNLatencyHigh
+        expr: relay:ann_p95_ms:5m > 200
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ANN p95 latency exceeds 200ms"
+          description: "ANN p95 latency {{ $value }}ms > 200ms (warning threshold)."
+
+      # DB Pool Warning: > 80% utilization
+      - alert: DBPoolUtilizationHigh
+        expr: relay:db_pool_utilization_max_5m > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database pool utilization above 80%"
+          description: "DB pool utilization {{ $value | humanizePercentage }} > 80%."
+
+      # Service down detection
+      - alert: RelayServiceDown
+        expr: up{job="relay-production"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          action: page
+        annotations:
+          summary: "Relay production service is down"
+          description: "Relay production metrics endpoint is not responding."

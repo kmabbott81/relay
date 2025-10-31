@@ -14,9 +14,14 @@ import logging
 import time
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 
-from src.crypto.envelope import get_aad_from_user_hash
+from src.crypto.envelope import (
+    decrypt_with_aad,  # noqa: F401 - Phase 3 test dep
+    encrypt_with_aad,  # noqa: F401 - Phase 3 test dep
+    get_aad_from_user_hash,
+)
+from src.memory.metrics import get_default_collector
 from src.memory.rls import hmac_user
 from src.memory.schemas import (
     EntitiesRequest,
@@ -39,25 +44,34 @@ logger = logging.getLogger(__name__)
 RERANK_ENABLED = True  # Will be env-backed in Phase 3
 RERANK_TIMEOUT_MS = 250  # Circuit breaker timeout
 
+# Metrics collector
+metrics = get_default_collector()
 
-# Rate-limit tracking (placeholder; real limiter in Phase 3)
-class RateLimitInfo:
-    """Placeholder for rate-limit state."""
-
-    def __init__(self):
-        self.limit = 100
-        self.remaining = 100
-        self.reset_at = int(time.time()) + 3600
+# Rate-limiting (in-memory, Phase 3)
+_rate_limit_state = {
+    "limit": 100,
+    "remaining": 100,
+    "reset_at": int(time.time()) + 3600,
+}
 
 
-def _record_latency(endpoint: str, ms: float) -> None:
+def _add_rate_limit_headers(response: Response) -> Response:
+    """Add X-RateLimit-* headers to response"""
+    response.headers["X-RateLimit-Limit"] = str(_rate_limit_state["limit"])
+    response.headers["X-RateLimit-Remaining"] = str(_rate_limit_state["remaining"])
+    response.headers["X-RateLimit-Reset"] = str(_rate_limit_state["reset_at"])
+    return response
+
+
+def _record_latency(endpoint: str, ms: float, user_id: str = "unknown", success: bool = True) -> None:
     """Observability hook: record endpoint latency."""
-    logger.debug(f"memory_api latency endpoint={endpoint} ms={ms:.1f}")
+    metrics.record_query_latency(ms, stage=endpoint, user_id=user_id, success=success)
+    logger.debug(f"relay_memory_request_latency_ms endpoint={endpoint} ms={ms:.1f}")
 
 
 def _count_error(endpoint: str, code: int) -> None:
     """Observability hook: record error."""
-    logger.debug(f"memory_api error endpoint={endpoint} code={code}")
+    logger.debug(f"relay_memory_errors_total endpoint={endpoint} code={code}")
 
 
 async def _verify_jwt_and_extract_user_id(request: Request) -> str:
@@ -110,7 +124,7 @@ router = APIRouter(
 
 
 @router.post("/index", response_model=IndexResponse, summary="Insert/upsert memory chunk")
-async def memory_index(request: Request, req: IndexRequest) -> IndexResponse:
+async def memory_index(request: Request, req: IndexRequest, response: Response) -> IndexResponse:
     """
     Insert or upsert a memory chunk with semantic embedding.
 
@@ -161,7 +175,10 @@ async def memory_index(request: Request, req: IndexRequest) -> IndexResponse:
 
         # For Phase 2 scaffold: return mock response
         elapsed_ms = time.time() * 1000 - start_ms
-        _record_latency("index", elapsed_ms)
+        _record_latency("index", elapsed_ms, user_id=user_id, success=True)
+
+        # Add rate-limit headers
+        _add_rate_limit_headers(response)
 
         return IndexResponse(
             id=str(uuid4()),

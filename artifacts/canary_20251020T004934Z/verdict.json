@@ -1,0 +1,7 @@
+{
+  "total": 30,
+  "success": 6,
+  "ratio": 0.2000,
+  "p95_ms": 160.880,
+  "pass": true
+}

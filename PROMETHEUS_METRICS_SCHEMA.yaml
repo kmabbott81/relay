@@ -1,0 +1,304 @@
+# Prometheus Metrics Schema - R1 Task D Memory APIs
+# Sprint 62 Phase 4 - Full Infrastructure Validation
+# Generated: 2025-10-31
+
+# Scrape Configuration Template
+scrape_configs:
+  - job_name: 'memory_api'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets:
+          - 'localhost:8000'  # Update with actual service endpoint
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+      - source_labels: [__address__]
+        target_label: job
+        replacement: 'memory_api'
+
+# Metrics Emitted by Memory APIs
+# Source: src/memory/metrics.py (MemoryMetricsCollector)
+
+metrics:
+  # Request Metrics
+  - name: memory_query_latency_ms
+    type: histogram
+    help: "Query latency in milliseconds (ANN search + optional reranking)"
+    labels:
+      - stage  # 'ann', 'rerank', 'total', 'index', 'query', 'summarize', 'entities'
+      - status  # 'success', 'error'
+      - user_id  # First 8 chars (truncated for cardinality control)
+    buckets: [10, 50, 100, 250, 500, 750, 1000, 2000, 5000]
+    exemplar: relay_memory_request_latency_ms{stage="query",status="success"} 342.5
+
+  - name: memory_rerank_ms
+    type: histogram
+    help: "Reranking operation latency in milliseconds"
+    labels:
+      - skipped  # 'true' if circuit breaker tripped, 'false' otherwise
+      - user_id  # First 8 chars
+    buckets: [10, 50, 100, 150, 250, 500]
+    exemplar: memory_rerank_ms{skipped="false"} 89.3
+
+  - name: memory_index_latency_ms
+    type: histogram
+    help: "Chunk indexing operation latency"
+    labels:
+      - status  # 'success', 'error'
+      - user_id  # First 8 chars
+    buckets: [50, 100, 250, 500, 750, 1000, 2000]
+    exemplar: memory_index_latency_ms{status="success"} 650.2
+
+  # Counter Metrics
+  - name: memory_query_total
+    type: counter
+    help: "Total number of query operations"
+    labels: []
+    exemplar: memory_query_total 12450
+
+  - name: memory_rerank_skipped_total
+    type: counter
+    help: "Total number of reranking operations skipped due to circuit breaker"
+    labels: []
+    exemplar: memory_rerank_skipped_total 15
+
+  - name: memory_index_total
+    type: counter
+    help: "Total number of chunks indexed"
+    labels: []
+    exemplar: memory_index_total 8923
+
+  - name: memory_index_errors_total
+    type: counter
+    help: "Total number of indexing errors"
+    labels: []
+    exemplar: memory_index_errors_total 3
+
+  # Security / Anomaly Metrics
+  - name: memory_cross_tenant_attempts_total
+    type: counter
+    help: "Total cross-tenant access attempts detected (CRITICAL)"
+    labels: []
+    exemplar: memory_cross_tenant_attempts_total 0  # Should always be 0
+
+  - name: memory_rls_blocks_total
+    type: counter
+    help: "Total RLS policy violations blocked"
+    labels: []
+    exemplar: memory_rls_blocks_total 2
+
+  - name: memory_invalid_user_hash_total
+    type: counter
+    help: "Total invalid user_hash detections"
+    labels: []
+    exemplar: memory_invalid_user_hash_total 0
+
+  # Gauge Metrics (Resource Utilization)
+  - name: memory_chunk_count
+    type: gauge
+    help: "Current number of memory chunks per user"
+    labels:
+      - user_id  # First 16 chars (more precise for this metric)
+    exemplar: memory_chunk_count{user_id="user_abc12345"} 450
+
+  - name: memory_index_size_bytes
+    type: gauge
+    help: "Total memory index size in bytes"
+    labels:
+      - stage  # 'primary'
+    exemplar: memory_index_size_bytes{stage="primary"} 104857600  # 100MB
+
+  - name: database_pool_utilization_percent
+    type: gauge
+    help: "Database connection pool utilization percentage"
+    labels:
+      - pool  # 'memory_bucket', 'chat_bucket', etc.
+    exemplar: database_pool_utilization_percent{pool="memory_bucket"} 65.3
+
+  # Rate Limiting Metrics (Phase 4 instrumentation)
+  - name: relay_memory_rate_limit_events_total
+    type: counter
+    help: "Total rate limit exceeded events (429 responses)"
+    labels:
+      - scope  # 'per_ip', 'per_user', 'per_anon_token'
+    exemplar: relay_memory_rate_limit_events_total{scope="per_ip"} 8
+
+  - name: relay_memory_errors_total
+    type: counter
+    help: "Total API errors by endpoint and status code"
+    labels:
+      - endpoint  # 'index', 'query', 'summarize', 'entities'
+      - code  # '401', '403', '422', '429', '500', '503'
+    exemplar: relay_memory_errors_total{endpoint="query",code="503"} 2
+
+  - name: relay_memory_request_latency_ms
+    type: histogram
+    help: "End-to-end request latency (including JWT, RLS, crypto)"
+    labels:
+      - endpoint  # 'index', 'query', 'summarize', 'entities'
+      - outcome  # 'success', 'error', 'rate_limited'
+    buckets: [50, 100, 250, 500, 750, 1000, 1500, 2000, 3000]
+    exemplar: relay_memory_request_latency_ms{endpoint="query",outcome="success"} 342.5
+
+# Alert Rules
+alert_rules:
+  - alert: MemoryQueryLatencyHigh
+    expr: histogram_quantile(0.95, rate(memory_query_latency_ms_bucket{stage="total"}[5m])) > 400
+    for: 5m
+    labels:
+      severity: warning
+      component: memory_api
+    annotations:
+      summary: "Memory query p95 latency exceeds 400ms"
+      description: "Query latency p95 is {{ $value }}ms (threshold: 400ms). Check ANN index health or reranker GPU load."
+
+  - alert: MemoryTTFVExceeded
+    expr: histogram_quantile(0.95, rate(relay_memory_request_latency_ms_bucket{outcome="success"}[5m])) > 1500
+    for: 5m
+    labels:
+      severity: warning
+      component: memory_api
+    annotations:
+      summary: "TTFV p95 exceeds 1500ms target"
+      description: "Time to first value is {{ $value }}ms. Target: <1500ms. Investigate embedding API or DB latency."
+
+  - alert: MemoryRerankCircuitBreakerHigh
+    expr: rate(memory_rerank_skipped_total[5m]) > 0.1
+    for: 10m
+    labels:
+      severity: warning
+      component: memory_reranker
+    annotations:
+      summary: "Rerank circuit breaker tripping frequently"
+      description: "Reranker skipped {{ $value }} ops/s (>10% of queries). Check GPU health or cross-encoder timeout."
+
+  - alert: MemoryCrossTenantAccessAttempt
+    expr: increase(memory_cross_tenant_attempts_total[5m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+      component: memory_security
+      page: true
+    annotations:
+      summary: "CRITICAL: Cross-tenant access attempt detected"
+      description: "{{ $value }} cross-tenant access attempts in last 5m. Investigate immediately. Potential security breach."
+
+  - alert: MemoryRLSViolationHigh
+    expr: rate(memory_rls_blocks_total[5m]) > 0.083  # >5 per minute
+    for: 5m
+    labels:
+      severity: warning
+      component: memory_security
+    annotations:
+      summary: "High rate of RLS policy violations"
+      description: "{{ $value }} RLS blocks per second. May indicate attack or misconfigured queries."
+
+  - alert: MemoryRateLimitExceededHigh
+    expr: rate(relay_memory_rate_limit_events_total[5m]) > 0.5  # >30 per minute
+    for: 10m
+    labels:
+      severity: info
+      component: memory_api
+    annotations:
+      summary: "High rate limit exceeded events"
+      description: "{{ $value }} 429 responses per second. Users hitting quota frequently."
+
+  - alert: MemoryIndexErrorRateHigh
+    expr: rate(memory_index_errors_total[5m]) / rate(memory_index_total[5m]) > 0.05
+    for: 10m
+    labels:
+      severity: warning
+      component: memory_indexer
+    annotations:
+      summary: "Memory indexing error rate >5%"
+      description: "{{ $value | humanizePercentage }} of indexing operations failing. Check embedding API or DB health."
+
+# Recording Rules (for performance)
+recording_rules:
+  - record: memory_query_latency_p50
+    expr: histogram_quantile(0.50, rate(memory_query_latency_ms_bucket{stage="total"}[5m]))
+
+  - record: memory_query_latency_p95
+    expr: histogram_quantile(0.95, rate(memory_query_latency_ms_bucket{stage="total"}[5m]))
+
+  - record: memory_query_latency_p99
+    expr: histogram_quantile(0.99, rate(memory_query_latency_ms_bucket{stage="total"}[5m]))
+
+  - record: memory_rerank_latency_p95
+    expr: histogram_quantile(0.95, rate(memory_rerank_ms_bucket[5m]))
+
+  - record: memory_request_success_rate
+    expr: |
+      sum(rate(relay_memory_request_latency_ms_count{outcome="success"}[5m]))
+      /
+      sum(rate(relay_memory_request_latency_ms_count[5m]))
+
+  - record: memory_sse_completion_rate
+    expr: |
+      sum(rate(memory_query_latency_ms_count{status="success"}[5m]))
+      /
+      sum(rate(memory_query_latency_ms_count[5m]))
+
+# Grafana Dashboard Queries (example)
+dashboard_queries:
+  - name: "Query Latency (p50, p95, p99)"
+    query: |
+      histogram_quantile(0.50, rate(memory_query_latency_ms_bucket{stage="total"}[5m])) or
+      histogram_quantile(0.95, rate(memory_query_latency_ms_bucket{stage="total"}[5m])) or
+      histogram_quantile(0.99, rate(memory_query_latency_ms_bucket{stage="total"}[5m]))
+
+  - name: "Circuit Breaker Trip Rate"
+    query: rate(memory_rerank_skipped_total[5m])
+
+  - name: "Error Rate by Endpoint"
+    query: sum(rate(relay_memory_errors_total[5m])) by (endpoint, code)
+
+  - name: "Rate Limit 429s per Minute"
+    query: sum(rate(relay_memory_rate_limit_events_total[1m]) * 60) by (scope)
+
+  - name: "RLS Blocks (Security)"
+    query: increase(memory_rls_blocks_total[5m])
+
+# Phase 4 Validation Checklist
+validation_steps:
+  - step: 1
+    action: "Start FastAPI app with /metrics endpoint"
+    command: "uvicorn src.webapi:app --host 0.0.0.0 --port 8000"
+    expected: "Metrics available at http://localhost:8000/metrics"
+
+  - step: 2
+    action: "Verify metrics format (Prometheus scrape)"
+    command: "curl http://localhost:8000/metrics"
+    expected: "See memory_query_latency_ms, relay_memory_request_latency_ms, etc."
+
+  - step: 3
+    action: "Update Prometheus scrape config"
+    file: "/etc/prometheus/prometheus.yml"
+    expected: "Add memory_api job with correct target"
+
+  - step: 4
+    action: "Reload Prometheus config"
+    command: "curl -X POST http://localhost:9090/-/reload"
+    expected: "Prometheus reloaded without errors"
+
+  - step: 5
+    action: "Verify metrics in Prometheus UI"
+    url: "http://localhost:9090/graph?g0.expr=memory_query_latency_p95&g0.tab=0"
+    expected: "Query returns data points"
+
+  - step: 6
+    action: "Import Grafana dashboard"
+    file: "monitoring/grafana_memory_dashboard.json"
+    expected: "Dashboard shows latency, errors, rate limits"
+
+  - step: 7
+    action: "Configure alert manager"
+    file: "/etc/alertmanager/alertmanager.yml"
+    expected: "Routes for critical alerts (cross-tenant, RLS violations)"
+
+  - step: 8
+    action: "Test alert firing"
+    command: "python scripts/test_alert_firing.py"
+    expected: "Simulated high latency triggers warning alert"

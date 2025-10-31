@@ -1,0 +1,157 @@
+{
+  "dashboard": {
+    "title": "Relay Canary - Golden Signals",
+    "description": "Real-time monitoring for R1 canary deployment (5% traffic)",
+    "tags": ["canary", "relay", "production"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "TTFV p95 (< 1500ms)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"relay-production\"}[5m])) by (le)) * 1000",
+            "legendFormat": "p95 latency (ms)",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ms",
+            "label": "Latency (ms)",
+            "logBase": 1,
+            "show": true,
+            "min": 0,
+            "max": 2000
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [1500], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "type": "query"
+            }
+          ],
+          "name": "TTFV p95 breach",
+          "message": "p95 latency exceeded 1500ms"
+        }
+      },
+      {
+        "id": 2,
+        "title": "RLS Errors (should be 0)",
+        "type": "graph",
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "increase(relay_rls_errors_total[5m])",
+            "legendFormat": "RLS errors",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Errors",
+            "logBase": 1,
+            "show": true,
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "SSE Success Rate (>= 99.6%)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "(increase(relay_sse_success_total[5m])) / (increase(relay_sse_success_total[5m]) + increase(relay_sse_fail_total[5m])) * 100",
+            "legendFormat": "Success %",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Success Rate",
+            "logBase": 1,
+            "show": true,
+            "min": 98,
+            "max": 100
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "ANN p95 Latency (< 200ms)",
+        "type": "graph",
+        "gridPos": {"x": 18, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(relay_ann_latency_ms_bucket[5m])) by (le))",
+            "legendFormat": "ANN p95 (ms)",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ms",
+            "label": "Latency (ms)",
+            "logBase": 1,
+            "show": true,
+            "min": 0,
+            "max": 300
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "DB Pool Utilization (< 80%)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 8, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "max_over_time(relay_db_pool_utilization[5m]) * 100",
+            "legendFormat": "Pool %",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Utilization",
+            "logBase": 1,
+            "show": true,
+            "min": 0,
+            "max": 100
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Request Rate",
+        "type": "graph",
+        "gridPos": {"x": 6, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{job=\"relay-production\"}[5m])) by (endpoint)",
+            "legendFormat": "{{endpoint}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Requests/sec",
+            "logBase": 1,
+            "show": true
+          }
+        ]
+      }
+    ]
+  }
+}

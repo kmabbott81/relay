@@ -1,0 +1,218 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "canary-guardrails",
+    "title": "Relay Canary Guardrails",
+    "description": "Real-time monitoring of 5 critical guardrail metrics for canary deployment",
+    "tags": ["canary", "relay", "production", "guardrails"],
+    "timezone": "browser",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "🚦 TTFV p95 (Target < 1500ms)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "relay:ttfv_p95_ms:5m",
+            "legendFormat": "p95 TTFV",
+            "refId": "A"
+          },
+          {
+            "expr": "1500",
+            "legendFormat": "Threshold",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1200, "color": "yellow"},
+                {"value": 1500, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "alertThreshold": true
+        }
+      },
+      {
+        "id": 2,
+        "title": "✅ SSE Success Rate (Target ≥ 99.6%)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "relay:sse_success_ratio:5m * 100",
+            "legendFormat": "Success Rate",
+            "refId": "A"
+          },
+          {
+            "expr": "99.6",
+            "legendFormat": "Threshold",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 98,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 99.6, "color": "green"},
+                {"value": 99.0, "color": "yellow"},
+                {"value": 0, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "🔐 RLS Errors (MUST be 0)",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 8, "w": 8, "h": 8},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "relay:rls_errors_5m",
+            "legendFormat": "Errors",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "center",
+          "textMode": "value"
+        }
+      },
+      {
+        "id": 4,
+        "title": "⚡ ANN p95 Latency (Target < 200ms)",
+        "type": "graph",
+        "gridPos": {"x": 8, "y": 8, "w": 8, "h": 8},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "relay:ann_p95_ms:5m",
+            "legendFormat": "p95 ANN",
+            "refId": "A"
+          },
+          {
+            "expr": "200",
+            "legendFormat": "Warning",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 150, "color": "yellow"},
+                {"value": 200, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "💾 DB Pool Utilization (Target < 80%)",
+        "type": "gauge",
+        "gridPos": {"x": 16, "y": 8, "w": 8, "h": 8},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "relay:db_pool_utilization_max_5m * 100",
+            "legendFormat": "Pool %",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 60, "color": "yellow"},
+                {"value": 80, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "showThresholdMarkers": true,
+          "showThresholdLabels": true
+        }
+      },
+      {
+        "id": 6,
+        "title": "📊 Service Status",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 16, "w": 24, "h": 4},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "up{job=\"relay-production\"}",
+            "legendFormat": "Relay Status",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "1", "text": "✅ UP"},
+              {"type": "value", "value": "0", "text": "❌ DOWN"}
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "textMode": "value_and_name"
+        }
+      }
+    ]
+  }
+}

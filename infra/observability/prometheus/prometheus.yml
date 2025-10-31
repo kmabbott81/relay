@@ -1,0 +1,58 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: 'production'
+    cluster: 'relay'
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts.yml"
+
+# Recording rules for canary guardrails
+# These pre-compute the 5 critical metrics
+recording_rules:
+  - name: relay_guardrails
+    interval: 30s
+    rules:
+      - record: relay:ttfv_p95_ms:5m
+        expr: histogram_quantile(0.95, sum(rate(relay_ttfv_ms_bucket[5m])) by (le))
+
+      - record: relay:sse_success_ratio:5m
+        expr: |
+          (increase(relay_sse_success_total[5m])) /
+          (increase(relay_sse_success_total[5m]) + increase(relay_sse_fail_total[5m]))
+
+      - record: relay:rls_errors_5m
+        expr: increase(relay_rls_errors_total[5m])
+
+      - record: relay:ann_p95_ms:5m
+        expr: histogram_quantile(0.95, sum(rate(relay_ann_latency_ms_bucket[5m])) by (le))
+
+      - record: relay:db_pool_utilization_max_5m
+        expr: max_over_time(relay_db_pool_utilization[5m])
+
+# Scrape configurations
+scrape_configs:
+  # Scrape Relay production metrics
+  - job_name: 'relay-production'
+    metrics_path: '/metrics'
+    scheme: https
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets:
+          - 'relay-production-f2a6.up.railway.app'
+    honor_labels: true
+    honor_timestamps: true
+
+  # Self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

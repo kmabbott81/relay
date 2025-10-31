@@ -1,0 +1,8 @@
+Load Balancer Configuration (Pre-Canary):
+- Baseline Service (r0.5-hotfix): 100%
+- Canary Service (main/R1): 0%
+- Target Split: 95% baseline / 5% canary
+
+Current Services:
+- relay-production-f2a6.up.railway.app (production)
+- Test will route 5% to R1 branch for A/B testing

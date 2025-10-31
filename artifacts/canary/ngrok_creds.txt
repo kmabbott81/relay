@@ -1,0 +1,4 @@
+PROM_USER=prom
+PROM_PASS=wsQepW1Ubo9/urB+ssq9Hl5r/FUjnrhv
+GRAF_USER=graf
+GRAF_PASS=1wQKYDdYGBbaZgwhkUCpR4rSCl2BY2mX

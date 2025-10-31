@@ -1,0 +1,16 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: ${PROMETHEUS_URL:-http://relay-prometheus.railway.internal:9090}
+    basicAuth: false
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: GET
+      timeInterval: "15s"
+      queryTimeout: "30s"
+      incrementalQuerying: true
+      incrementalQueryOverlapWindow: "10m"

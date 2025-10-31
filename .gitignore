@@ -75,3 +75,11 @@ observability/results/**/*.zip
 observability/results/**/data/
 observability/results/**/wal/
 observability/results/**/chunks_head/
+
+# Canary and test artifacts (credentials, tokens, raw metrics)
+artifacts/**/tokens.txt
+artifacts/**/raw_results.tsv
+artifacts/**/*.key
+artifacts/**/*credentials*
+.env.canary
+canary*.log

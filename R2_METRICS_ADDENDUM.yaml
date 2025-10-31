@@ -1,0 +1,455 @@
+# R2 Metrics Schema Addendum — Knowledge API Metrics
+# Date: 2025-10-31
+# Purpose: Extend PROMETHEUS_METRICS_SCHEMA.yaml with file ingestion metrics
+# Status: R2 Phase 1 (Design Ready)
+
+# This file defines 18 new metrics for the Knowledge API (file upload, embedding, search)
+# To be merged with R1 metrics in production Prometheus configuration
+
+---
+
+# ============================================================================
+# HISTOGRAMS — Latency Measurements
+# ============================================================================
+
+histograms:
+  # File Ingestion Latency (end-to-end: upload → indexed)
+  file_ingest_latency_ms:
+    type: histogram
+    description: "End-to-end file ingestion latency (upload → extract → chunk → embed → store)"
+    unit: milliseconds
+    buckets: [100, 250, 500, 1000, 2500, 5000, 10000, 30000]
+    labels: [file_source, embedding_model, chunk_strategy, status]
+    example_query: "histogram_quantile(0.95, file_ingest_latency_ms_bucket) by (file_source)"
+
+  # File Extraction Duration (by format)
+  file_extraction_duration_ms:
+    type: histogram
+    description: "Time to extract text from uploaded file (PDF, DOCX, images, etc.)"
+    unit: milliseconds
+    buckets: [100, 500, 1000, 2500, 5000, 10000]
+    labels: [file_format, status]
+    example_query: "histogram_quantile(0.95, file_extraction_duration_ms_bucket) by (file_format)"
+
+  # Chunking Duration
+  file_chunking_duration_ms:
+    type: histogram
+    description: "Time to chunk extracted text into logical segments"
+    unit: milliseconds
+    buckets: [50, 100, 250, 500, 1000, 2500]
+    labels: [chunk_strategy, file_size_bucket]
+    example_query: "avg(file_chunking_duration_ms_bucket) by (chunk_strategy)"
+
+  # Chunk Size Distribution (in tokens)
+  file_chunk_size_tokens:
+    type: histogram
+    description: "Distribution of chunk sizes (in tokens) after chunking"
+    unit: tokens
+    buckets: [256, 512, 1024, 2048, 4096, 8192]
+    labels: [chunk_strategy]
+    example_query: "histogram_quantile(0.95, file_chunk_size_tokens_bucket)"
+
+  # Embedding Generation Latency (by model)
+  file_embedding_latency_ms:
+    type: histogram
+    description: "Time to generate embeddings for a batch of chunks"
+    unit: milliseconds
+    buckets: [100, 250, 500, 1000, 2500, 5000, 10000]
+    labels: [embedding_model, batch_size_bucket, status]
+    example_query: "histogram_quantile(0.95, file_embedding_latency_ms_bucket{embedding_model='ada-002'})"
+
+  # Vector Insert Latency
+  vector_insert_latency_ms:
+    type: histogram
+    description: "Time to insert vectors into vector database (PostgreSQL pgvector)"
+    unit: milliseconds
+    buckets: [50, 100, 250, 500, 1000, 2500]
+    labels: [vector_store, status]
+    example_query: "histogram_quantile(0.95, vector_insert_latency_ms_bucket)"
+
+  # Vector Search Latency
+  vector_search_latency_ms:
+    type: histogram
+    description: "Time to perform vector similarity search (HNSW index)"
+    unit: milliseconds
+    buckets: [10, 50, 100, 250, 500, 1000]
+    labels: [index_type, top_k_bucket, status]
+    example_query: "histogram_quantile(0.95, vector_search_latency_ms_bucket)"
+
+  # File List Latency
+  file_list_latency_ms:
+    type: histogram
+    description: "Time to retrieve paginated file list (with RLS)"
+    unit: milliseconds
+    buckets: [10, 25, 50, 100, 250]
+    labels: [status]
+    example_query: "histogram_quantile(0.95, file_list_latency_ms_bucket)"
+
+  # File Deletion Latency
+  file_delete_latency_ms:
+    type: histogram
+    description: "Time to delete file and cascade delete embeddings"
+    unit: milliseconds
+    buckets: [50, 100, 250, 500, 1000]
+    labels: [chunks_deleted_bucket, status]
+    example_query: "histogram_quantile(0.95, file_delete_latency_ms_bucket)"
+
+---
+
+# ============================================================================
+# COUNTERS — Event Counts
+# ============================================================================
+
+counters:
+  # File Uploads
+  file_upload_total:
+    type: counter
+    description: "Total files uploaded (cumulative)"
+    labels: [source, mime_type, status]
+    example_query: "rate(file_upload_total[5m]) by (source)"
+
+  # Chunks Created
+  file_chunks_created_total:
+    type: counter
+    description: "Total chunks created across all files (cumulative)"
+    labels: [chunk_strategy, file_source]
+    example_query: "rate(file_chunks_created_total[5m])"
+
+  # Embedding Operations
+  file_embedding_ops_total:
+    type: counter
+    description: "Total embedding generation calls (cumulative)"
+    labels: [embedding_model, batch_size_bucket, status]
+    example_query: "rate(file_embedding_ops_total[5m]) by (embedding_model, status)"
+
+  # Embedding Cache Hits
+  embedding_cache_hits_total:
+    type: counter
+    description: "Total hits on embedding cache (returns cached vectors)"
+    labels: [embedding_model]
+    example_query: "rate(embedding_cache_hits_total[5m])"
+
+  # Circuit Breaker Trips (Embedding Service Down)
+  embedding_circuit_breaker_trips_total:
+    type: counter
+    description: "Times embedding service failed, circuit breaker triggered"
+    labels: [service, fallback_strategy]
+    example_query: "rate(embedding_circuit_breaker_trips_total[5m])"
+
+  # RLS Violations (File Access Denied)
+  file_rls_blocks_total:
+    type: counter
+    description: "Total RLS policy blocks (user tried to access other user's file)"
+    labels: [operation]
+    example_query: "rate(file_rls_blocks_total[5m])"
+
+  # AAD Mismatches (Encryption Integrity Check Failed)
+  file_aad_mismatch_total:
+    type: counter
+    description: "Total AAD verification failures (metadata decrypt failed or user_hash/file_id mismatch)"
+    labels: [operation]
+    example_query: "rate(file_aad_mismatch_total[5m])"
+
+  # Vector Search Hits (queries with results)
+  vector_search_hits_total:
+    type: counter
+    description: "Total vector searches returning at least one result"
+    labels: [status]
+    example_query: "rate(vector_search_hits_total[5m])"
+
+  # Vector Search Cache Hits
+  vector_search_cache_hits_total:
+    type: counter
+    description: "Total vector searches returning cached results"
+    labels: [cache_source]
+    example_query: "rate(vector_search_cache_hits_total[5m])"
+
+  # Extraction Errors (by format)
+  file_extraction_errors_total:
+    type: counter
+    description: "Total file extraction failures (corrupted PDF, unsupported format, etc.)"
+    labels: [file_format, error_type]
+    example_query: "rate(file_extraction_errors_total[5m]) by (file_format)"
+
+  # Embedding Job Failures (with retry tracking)
+  file_embedding_job_failures_total:
+    type: counter
+    description: "Total embedding job failures (after max retries exhausted)"
+    labels: [error_type, attempt_count_bucket]
+    example_query: "rate(file_embedding_job_failures_total[5m])"
+
+  # File Storage Size (counter as monotonic increase)
+  file_storage_bytes_total:
+    type: counter
+    description: "Total bytes uploaded and stored (cumulative, includes encryption overhead)"
+    labels: [storage_location, file_source]
+    example_query: "file_storage_bytes_total{storage_location='s3'}"
+
+  # Metadata Storage (encrypted bytes)
+  file_metadata_encrypted_bytes_total:
+    type: counter
+    description: "Total bytes of AAD-encrypted metadata stored"
+    labels: []
+    example_query: "file_metadata_encrypted_bytes_total"
+
+  # API Errors (Knowledge API specific)
+  knowledge_api_errors_total:
+    type: counter
+    description: "Total errors returned by Knowledge API (4xx, 5xx)"
+    labels: [endpoint, error_code, http_status]
+    example_query: "rate(knowledge_api_errors_total[5m]) by (error_code)"
+
+---
+
+# ============================================================================
+# GAUGES — Current State
+# ============================================================================
+
+gauges:
+  # Total Embeddings in Vector DB
+  file_embeddings_total:
+    type: gauge
+    description: "Current count of embeddings in vector database"
+    labels: []
+    example_query: "file_embeddings_total"
+
+  # Vector Index Size (bytes)
+  vector_index_size_bytes:
+    type: gauge
+    description: "Size of HNSW vector index in PostgreSQL (bytes)"
+    labels: []
+    example_query: "vector_index_size_bytes"
+
+  # Embedding Cache Size
+  embedding_cache_size_bytes:
+    type: gauge
+    description: "Current size of embedding cache in Redis (bytes)"
+    labels: []
+    example_query: "embedding_cache_size_bytes"
+
+  # Cache Hit Rate (%)
+  embedding_cache_hit_rate:
+    type: gauge
+    description: "Percentage of embedding requests served from cache (0-100)"
+    labels: []
+    example_query: "embedding_cache_hit_rate"
+
+  # Processing Queue Depth
+  file_embedding_jobs_queued:
+    type: gauge
+    description: "Current count of files waiting for embedding processing"
+    labels: [status]
+    example_query: "file_embedding_jobs_queued{status='queued'}"
+
+  # Active Embedding Jobs
+  file_embedding_jobs_active:
+    type: gauge
+    description: "Current count of files actively being processed"
+    labels: []
+    example_query: "file_embedding_jobs_active"
+
+  # Vector Search Cache Utilization
+  vector_search_cache_entries:
+    type: gauge
+    description: "Current count of cached search queries (entries)"
+    labels: []
+    example_query: "vector_search_cache_entries"
+
+  # File Count (per user, if tracked)
+  files_per_user_bucket:
+    type: gauge
+    description: "Distribution of files per user (histogram-style buckets)"
+    labels: [bucket]
+    example_query: "files_per_user_bucket{bucket='1-10'}"
+
+---
+
+# ============================================================================
+# ALERT RULES (5 new)
+# ============================================================================
+
+alert_rules:
+  # High File Ingestion Latency
+  FileIngestLatencyHigh:
+    expr: "histogram_quantile(0.95, file_ingest_latency_ms_bucket) > 10000"
+    for: 5m
+    severity: warning
+    message: "File ingestion latency p95 > 10s ({{ .Value | humanizeDuration }})"
+    runbook: "https://wiki/alerts/file_ingest_latency"
+
+  # Embedding Service Circuit Breaker Tripped
+  EmbeddingServiceDown:
+    expr: "rate(embedding_circuit_breaker_trips_total[5m]) > 0"
+    for: 1m
+    severity: critical
+    message: "Embedding service down, circuit breaker triggered"
+    runbook: "https://wiki/alerts/embedding_service_down"
+
+  # RLS Violation Attempts (Security Alert)
+  FileRLSViolationAttempt:
+    expr: "rate(file_rls_blocks_total[5m]) > 0"
+    for: 1m
+    severity: warning
+    message: "RLS violation detected: {{ .Value }} blocks/5m (audit: cross-tenant attempt?)"
+    runbook: "https://wiki/alerts/rls_violation"
+
+  # AAD Mismatch High (Encryption Integrity Check Failing)
+  FileAADMismatchHigh:
+    expr: "rate(file_aad_mismatch_total[5m]) > 0.1"
+    for: 5m
+    severity: warning
+    message: "AAD verification failures: {{ .Value }}/s (metadata integrity check failing)"
+    runbook: "https://wiki/alerts/aad_mismatch"
+
+  # Vector Search Latency High
+  VectorSearchLatencyHigh:
+    expr: "histogram_quantile(0.95, vector_search_latency_ms_bucket) > 500"
+    for: 5m
+    severity: warning
+    message: "Vector search p95 latency > 500ms ({{ .Value | humanizeDuration }})"
+    runbook: "https://wiki/alerts/vector_search_latency"
+
+---
+
+# ============================================================================
+# PROMETHEUS SCRAPE CONFIGURATION (Knowledge API Job)
+# ============================================================================
+
+prometheus_scrape_config:
+  job_name: knowledge_api
+  metrics_path: /metrics
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  static_configs:
+    - targets:
+        - localhost:8000
+      labels:
+        service: relay_knowledge_api
+        environment: staging  # or production
+
+---
+
+# ============================================================================
+# RECORDING RULES (R2 Phase 2)
+# ============================================================================
+
+recording_rules:
+  # Embedding operation rate per model
+  - expr: "rate(file_embedding_ops_total[5m])"
+    record: "embedding_ops_per_model:rate5m"
+
+  # File upload rate per source
+  - expr: "rate(file_upload_total[5m])"
+    record: "file_upload_per_source:rate5m"
+
+  # Vector search error rate
+  - expr: |
+      rate(knowledge_api_errors_total{endpoint='/search'}[5m])
+      /
+      (rate(knowledge_api_errors_total{endpoint='/search'}[5m]) + rate(vector_search_hits_total[5m]))
+    record: "vector_search_error_rate:ratio5m"
+
+---
+
+# ============================================================================
+# GRAFANA DASHBOARD PANELS (Knowledge API)
+# ============================================================================
+
+grafana_dashboard:
+  title: "R2 Knowledge API — File Ingestion & Vector Search"
+  panels:
+
+    # Panel 1: File Ingest Latency (p50, p95, p99)
+    - title: "File Ingestion Latency (by percentile)"
+      targets:
+        - expr: "histogram_quantile(0.50, file_ingest_latency_ms_bucket)"
+          legendFormat: "p50"
+        - expr: "histogram_quantile(0.95, file_ingest_latency_ms_bucket)"
+          legendFormat: "p95"
+        - expr: "histogram_quantile(0.99, file_ingest_latency_ms_bucket)"
+          legendFormat: "p99"
+      type: graph
+
+    # Panel 2: File Upload Rate (by source)
+    - title: "File Uploads per Source (rate)"
+      targets:
+        - expr: "rate(file_upload_total[5m]) by (source)"
+      type: graph
+
+    # Panel 3: Embedding Operations (by model)
+    - title: "Embedding Operations (rate by model)"
+      targets:
+        - expr: "rate(file_embedding_ops_total[5m]) by (embedding_model, status)"
+      type: graph
+
+    # Panel 4: Vector Search Latency (p95)
+    - title: "Vector Search Latency (p95)"
+      targets:
+        - expr: "histogram_quantile(0.95, vector_search_latency_ms_bucket)"
+      type: singlestat
+      thresholds: "250,500"
+
+    # Panel 5: RLS Violations (audit)
+    - title: "RLS Violations (audit counter)"
+      targets:
+        - expr: "rate(file_rls_blocks_total[5m])"
+      type: singlestat
+      alertThreshold: 0
+
+    # Panel 6: Embedding Cache Hit Rate (%)
+    - title: "Embedding Cache Hit Rate (%)"
+      targets:
+        - expr: "embedding_cache_hit_rate"
+      type: gauge
+      min: 0
+      max: 100
+
+    # Panel 7: Vector Embeddings Total (current)
+    - title: "Total Embeddings in DB"
+      targets:
+        - expr: "file_embeddings_total"
+      type: singlestat
+
+    # Panel 8: Processing Queue Depth
+    - title: "File Processing Queue (jobs waiting)"
+      targets:
+        - expr: "file_embedding_jobs_queued{status='queued'}"
+      type: graph
+
+---
+
+# ============================================================================
+# SUMMARY
+# ============================================================================
+
+summary:
+  new_metrics_count: 18
+  new_alerts_count: 5
+  dashboard_panels_count: 8
+  integration_status: "R2 Phase 1 (Design Ready)"
+  deployment_phase: "To be merged in Phase 2 implementation"
+  prometheus_compatible: true
+  grafana_compatible: true
+
+# ============================================================================
+# END OF R2 METRICS ADDENDUM
+# ============================================================================
+
+# Integration Notes:
+#
+# 1. Merge this schema with R1 PROMETHEUS_METRICS_SCHEMA.yaml in production
+# 2. Update Prometheus scrape config to include knowledge_api job
+# 3. Import alert rules into Prometheus AlertManager
+# 4. Import dashboard JSON into Grafana (12 panels total)
+# 5. Backfill metrics in Phase 2 implementation
+#
+# Phase 1 Status: Schema defined, not yet deployed (design phase)
+# Phase 2 Status: Metrics instrumentation in code (implementation phase)
+# Phase 3 Status: Metrics validation in staging (validation phase)
+#
+# Acceptance Criteria:
+# - 18 metrics defined with buckets + labels
+# - 5 alert rules with thresholds
+# - 8 dashboard panels designed
+# - RLS + AAD metrics included (security audit)
+# - No dependency on R1 metrics (additive, not breaking)
