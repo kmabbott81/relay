@@ -10,11 +10,20 @@ Async PostgreSQL connectivity with RLS context setup.
 
 import logging
 import os
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from typing import Optional
 
 import asyncpg
 
 logger = logging.getLogger(__name__)
+
+
+class SecurityError(Exception):
+    """Raised when RLS context is missing or invalid."""
+
+    pass
+
 
 # Connection pool
 _pool: Optional[asyncpg.Pool] = None
@@ -106,32 +115,84 @@ async def get_connection() -> asyncpg.Connection:
     return await _pool.acquire()
 
 
-async def execute_query(query: str, *args) -> list[dict]:
-    """Execute read query and return rows as dicts."""
+@asynccontextmanager
+async def with_user_conn(user_hash: str) -> AsyncGenerator[asyncpg.Connection, None]:
+    """
+    Context manager for per-user, per-transaction RLS enforcement.
+
+    CRITICAL SECURITY: Sets RLS context before any query, ensures transaction scope,
+    releases to pool on exit. Fail-closed: raises SecurityError if user_hash missing.
+
+    Usage:
+        async with with_user_conn(user_hash) as conn:
+            await conn.fetch("SELECT * FROM files", ...)
+    """
+    if not user_hash:
+        raise SecurityError("user_hash is required for RLS enforcement")
+
     conn = await get_connection()
     try:
+        # Open transaction
+        async with conn.transaction():
+            # Set RLS context with PARAMETERIZED QUERY (prevents SQL injection)
+            await conn.execute(
+                "SELECT set_config($1, $2, true)",
+                "app.user_hash",
+                user_hash,
+            )
+            logger.debug(f"RLS context set for user {user_hash[:8]}... (txn scope)")
+            yield conn
+    except SecurityError:
+        raise
+    except Exception as e:
+        logger.error(f"RLS context error for user {user_hash[:8]}: {e}")
+        raise
+    finally:
+        await _pool.release(conn)
+
+
+async def assert_current_user(conn: asyncpg.Connection, user_hash: str) -> None:
+    """
+    Verify that the connection has the correct RLS context set.
+
+    DEFENSIVE: Guard against pool/connection reuse bugs.
+    """
+    current_value = await conn.fetchval("SELECT current_setting('app.user_hash')")
+    if current_value != user_hash:
+        raise SecurityError(
+            f"RLS context mismatch: expected {user_hash[:8]}, got {current_value[:8] if current_value else 'NONE'}"
+        )
+
+
+async def execute_query(user_hash: str, query: str, *args) -> list[dict]:
+    """
+    Execute read query with RLS context and return rows as dicts.
+
+    CRITICAL: user_hash is REQUIRED and enforced via with_user_conn().
+    """
+    async with with_user_conn(user_hash) as conn:
         rows = await conn.fetch(query, *args)
         return [dict(row) for row in rows]
-    finally:
-        await _pool.release(conn)
 
 
-async def execute_query_one(query: str, *args) -> Optional[dict]:
-    """Execute read query and return first row as dict."""
-    conn = await get_connection()
-    try:
+async def execute_query_one(user_hash: str, query: str, *args) -> Optional[dict]:
+    """
+    Execute read query with RLS context and return first row as dict.
+
+    CRITICAL: user_hash is REQUIRED and enforced via with_user_conn().
+    """
+    async with with_user_conn(user_hash) as conn:
         row = await conn.fetchrow(query, *args)
         return dict(row) if row else None
-    finally:
-        await _pool.release(conn)
 
 
-async def execute_mutation(query: str, *args) -> int:
-    """Execute write query and return affected rows."""
-    conn = await get_connection()
-    try:
+async def execute_mutation(user_hash: str, query: str, *args) -> int:
+    """
+    Execute write query with RLS context and return affected rows.
+
+    CRITICAL: user_hash is REQUIRED and enforced via with_user_conn().
+    """
+    async with with_user_conn(user_hash) as conn:
         result = await conn.execute(query, *args)
         # Result is "UPDATE 5" style, extract count
         return int(result.split()[-1]) if result else 0
-    finally:
-        await _pool.release(conn)

@@ -3,15 +3,14 @@
 # Phase: R2 Phase 2 (Implementation)
 # Security: JWT → RLS → AAD (three-layer defense)
 
-import time
 import uuid
 from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, Response, UploadFile
 
+from src.knowledge.rate_limit.redis_bucket import get_rate_limit
 from src.knowledge.schemas import (
-    FileDeleteResponse,
     FileIndexRequest,
     FileIndexResponse,
     FileListResponse,
@@ -60,13 +59,6 @@ class _MetricsStub:
 
 metrics = _MetricsStub()
 
-# Rate limiting state (in-memory, Phase 3 moves to Redis)
-_rate_limit_state = {
-    "limit": 100,
-    "remaining": 100,
-    "reset_at": int(time.time()) + 3600,
-}
-
 
 # ============================================================================
 # SECURITY HELPERS
@@ -97,20 +89,29 @@ async def check_jwt_and_get_user_hash(request: Request) -> str:
         raise HTTPException(status_code=401, detail="Invalid JWT") from None
 
 
-def add_rate_limit_headers(response: Response, user_id: str) -> Response:
-    """Add X-RateLimit-* headers to response"""
-    response.headers["X-RateLimit-Limit"] = str(_rate_limit_state["limit"])
-    response.headers["X-RateLimit-Remaining"] = str(_rate_limit_state["remaining"])
-    response.headers["X-RateLimit-Reset"] = str(_rate_limit_state["reset_at"])
+async def add_rate_limit_headers(response: Response, status: dict) -> Response:
+    """
+    Add X-RateLimit-* headers to response from rate limit status.
+
+    CRITICAL: Per-user headers, not global state.
+    """
+    response.headers["X-RateLimit-Limit"] = str(status["limit"])
+    response.headers["X-RateLimit-Remaining"] = str(status["remaining"])
+    response.headers["X-RateLimit-Reset"] = str(status["reset_at"])
     return response
 
 
-def check_rate_limit(user_id: str) -> bool:
-    """Check if user is within rate limit"""
-    if _rate_limit_state["remaining"] <= 0:
-        return False
-    _rate_limit_state["remaining"] -= 1
-    return True
+async def check_rate_limit_and_get_status(user_hash: str, user_tier: str = "free") -> tuple[bool, dict]:
+    """
+    Check if user is rate limited (per-user Redis bucket).
+
+    Returns: (is_limited, status_dict)
+
+    CRITICAL: Enforces per-user limits via Redis, not global state.
+    """
+    status = await get_rate_limit(user_hash, user_tier)
+    is_limited = status["remaining"] <= 0
+    return is_limited, status
 
 
 def sanitize_error_detail(detail: str) -> str:
@@ -157,12 +158,13 @@ async def upload_file(
         # 1. JWT validation + RLS
         user_hash = await check_jwt_and_get_user_hash(request)
 
-        # 2. Rate limiting
-        if not check_rate_limit(str(request.scope.get("user", {}).get("user_id", "unknown"))):
+        # 2. Rate limiting (per-user Redis bucket)
+        is_limited, status = await check_rate_limit_and_get_status(user_hash, user_tier="free")
+        if is_limited:
             metrics.record_api_error("rate_limit_exceeded")
             response.status_code = 429
-            response.headers["Retry-After"] = "60"
-            add_rate_limit_headers(response, user_hash)
+            response.headers["Retry-After"] = str(status["retry_after"])
+            await add_rate_limit_headers(response, status)
             raise HTTPException(status_code=429, detail="Rate limit exceeded: 100 uploads/hour") from None
 
         # 3. File validation
@@ -222,7 +224,7 @@ async def upload_file(
         # await queue_file_for_processing(file_id, user_hash)
 
         # 5. Return 202 Accepted
-        add_rate_limit_headers(response, user_hash)
+        await add_rate_limit_headers(response, status)
         metrics.record_file_upload("success", source, file.content_type)
 
         return FileUploadResponse(
@@ -263,6 +265,14 @@ async def index_file(
         # 1. JWT validation
         user_hash = await check_jwt_and_get_user_hash(request)
 
+        # 1b. Rate limiting (per-user Redis bucket)
+        is_limited, status = await check_rate_limit_and_get_status(user_hash, user_tier="free")
+        if is_limited:
+            response.status_code = 429
+            response.headers["Retry-After"] = str(status["retry_after"])
+            await add_rate_limit_headers(response, status)
+            raise HTTPException(status_code=429, detail="Rate limit exceeded") from None
+
         # 2. Check ownership (RLS should prevent seeing other users' files, but be explicit)
         # TODO: Fetch file from DB with RLS
         # file_row = await db.fetchrow(
@@ -300,7 +310,7 @@ async def index_file(
         #     len(chunks), body.file_id, user_hash
         # )
 
-        add_rate_limit_headers(response, user_hash)
+        await add_rate_limit_headers(response, status)
         metrics.record_embedding_operation(body.embedding_model, "success")
 
         return FileIndexResponse(
@@ -343,11 +353,12 @@ async def search_knowledge(
         # 1. JWT validation
         user_hash = await check_jwt_and_get_user_hash(request)
 
-        # 2. Rate limiting
-        if not check_rate_limit(str(request.scope.get("user", {}).get("user_id", "unknown"))):
+        # 2. Rate limiting (per-user Redis bucket)
+        is_limited, status = await check_rate_limit_and_get_status(user_hash, user_tier="free")
+        if is_limited:
             response.status_code = 429
-            response.headers["Retry-After"] = "60"
-            add_rate_limit_headers(response, user_hash)
+            response.headers["Retry-After"] = str(status["retry_after"])
+            await add_rate_limit_headers(response, status)
             raise HTTPException(status_code=429, detail="Rate limit exceeded: 1000 queries/hour") from None
 
         # 3. Generate or use provided embedding
@@ -381,7 +392,7 @@ async def search_knowledge(
         #         # AAD mismatch: Normalize to 404 (not 403) to prevent existence oracle
         #         raise HTTPException(status_code=404, detail="File not found") from None
 
-        add_rate_limit_headers(response, user_hash)
+        await add_rate_limit_headers(response, status)
         metrics.record_vector_search("success")
 
         return SearchResponse(
@@ -422,6 +433,14 @@ async def list_files(
         # 1. JWT validation
         user_hash = await check_jwt_and_get_user_hash(request)
 
+        # 1b. Rate limiting (per-user Redis bucket)
+        is_limited, status = await check_rate_limit_and_get_status(user_hash, user_tier="free")
+        if is_limited:
+            response.status_code = 429
+            response.headers["Retry-After"] = str(status["retry_after"])
+            await add_rate_limit_headers(response, status)
+            raise HTTPException(status_code=429, detail="Rate limit exceeded") from None
+
         # 2. Query with RLS
         # TODO: SELECT * FROM files WHERE user_hash = %s LIMIT %s OFFSET %s
         # (RLS policy automatically filters to authenticated user_hash)
@@ -437,7 +456,7 @@ async def list_files(
         #     user_hash
         # )
 
-        add_rate_limit_headers(response, user_hash)
+        await add_rate_limit_headers(response, status)
         metrics.record_file_list_operation("success")
 
         return FileListResponse(
@@ -476,11 +495,18 @@ async def delete_file(
     - Explicit ownership check before cascade delete
     - AAD verification before deletion
     """
-    request_id = uuid.uuid4()
 
     try:
         # 1. JWT validation
         user_hash = await check_jwt_and_get_user_hash(request)
+
+        # 1b. Rate limiting (per-user Redis bucket)
+        is_limited, status = await check_rate_limit_and_get_status(user_hash, user_tier="free")
+        if is_limited:
+            response.status_code = 429
+            response.headers["Retry-After"] = str(status["retry_after"])
+            await add_rate_limit_headers(response, status)
+            raise HTTPException(status_code=429, detail="Rate limit exceeded") from None
 
         # 2. Explicit ownership check (even though RLS will prevent deletion otherwise)
         # Code shows intent: JWT + explicit check + RLS (defense in depth)
@@ -502,13 +528,8 @@ async def delete_file(
         #     file_id, user_hash
         # )
 
-        add_rate_limit_headers(response, user_hash)
+        await add_rate_limit_headers(response, status)
         metrics.record_file_deletion("success")
-
-        return FileDeleteResponse(
-            status="deleted",
-            request_id=request_id,
-        )
 
     except HTTPException:
         raise

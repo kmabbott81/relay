@@ -78,7 +78,12 @@ async def set_rls_context(conn: asyncpg.Connection, user_id: str):
         # Set app.user_hash session variable for RLS policy
         # This is read by the PostgreSQL function:
         #   current_setting('app.user_hash', true) -> user_hash
-        await conn.execute(f"SET app.user_hash = '{user_hash}';")
+        # CRITICAL SECURITY: Use parameterized query to prevent SQL injection
+        await conn.execute(
+            "SELECT set_config($1, $2, true)",
+            "app.user_hash",
+            user_hash,
+        )
         logger.debug(f"RLS context set for user_id={user_id}, user_hash={user_hash[:16]}...")
 
         yield conn
@@ -111,7 +116,12 @@ async def set_rls_session_variable(conn: asyncpg.Connection, user_id: str) -> st
     """
     user_hash = hmac_user(user_id)
 
-    await conn.execute(f"SET app.user_hash = '{user_hash}';")
+    # CRITICAL SECURITY: Use parameterized query to prevent SQL injection
+    await conn.execute(
+        "SELECT set_config($1, $2, true)",
+        "app.user_hash",
+        user_hash,
+    )
     logger.debug(f"RLS session variable set: user_id={user_id}, user_hash={user_hash[:16]}...")
 
     return user_hash
