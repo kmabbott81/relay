@@ -52,7 +52,8 @@
       "Bash(then wc -l $file)",
       "Bash(awk '{print \"\"\"\"✓ \"\"\"\" $2 \"\"\"\": \"\"\"\" $1 \"\"\"\" lines\"\"\"\"}' else echo \"✗ $file: NOT FOUND\" fi done)",
       "Bash(test:*)",
-      "Bash(git -C \"C:\\Users\\kylem\\openai-agents-workflows-2025.09.28-v1\" log --oneline -1)"
+      "Bash(git -C \"C:\\Users\\kylem\\openai-agents-workflows-2025.09.28-v1\" log --oneline -1)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
