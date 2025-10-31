@@ -113,7 +113,7 @@ async def execute_query(query: str, *args) -> list[dict]:
         rows = await conn.fetch(query, *args)
         return [dict(row) for row in rows]
     finally:
-        await conn.close()
+        await _pool.release(conn)
 
 
 async def execute_query_one(query: str, *args) -> Optional[dict]:
@@ -123,7 +123,7 @@ async def execute_query_one(query: str, *args) -> Optional[dict]:
         row = await conn.fetchrow(query, *args)
         return dict(row) if row else None
     finally:
-        await conn.close()
+        await _pool.release(conn)
 
 
 async def execute_mutation(query: str, *args) -> int:
@@ -134,4 +134,4 @@ async def execute_mutation(query: str, *args) -> int:
         # Result is "UPDATE 5" style, extract count
         return int(result.split()[-1]) if result else 0
     finally:
-        await conn.close()
+        await _pool.release(conn)

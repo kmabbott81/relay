@@ -58,20 +58,26 @@ async def upload_file(
 
     Returns: Storage path/URL for reference
     """
+    import asyncio
+
     s3_key = f"knowledge/{user_hash}/{file_id}"
 
     if STORAGE_TYPE == "s3":
         s3_client = _get_s3_client()
         if s3_client:
             try:
-                s3_client.put_object(
-                    Bucket=STORAGE_BUCKET,
-                    Key=s3_key,
-                    Body=file_bytes,
-                    ContentType=content_type,
-                    ServerSideEncryption="AES256",
-                    Metadata={"user_hash": user_hash, "file_id": str(file_id)},
-                )
+                # Run sync S3 call in thread pool
+                def _upload():
+                    s3_client.put_object(
+                        Bucket=STORAGE_BUCKET,
+                        Key=s3_key,
+                        Body=file_bytes,
+                        ContentType=content_type,
+                        ServerSideEncryption="AES256",
+                        Metadata={"user_hash": user_hash, "file_id": str(file_id)},
+                    )
+
+                await asyncio.to_thread(_upload)
                 logger.info(f"Uploaded {file_id} to S3: {s3_key}")
                 return f"s3://{STORAGE_BUCKET}/{s3_key}"
             except Exception as e:
@@ -99,14 +105,21 @@ async def download_file(
 
     Returns: File bytes or None if not found
     """
+    import asyncio
+
     s3_key = f"knowledge/{user_hash}/{file_id}"
 
     if STORAGE_TYPE == "s3":
         s3_client = _get_s3_client()
         if s3_client:
             try:
-                response = s3_client.get_object(Bucket=STORAGE_BUCKET, Key=s3_key)
-                file_bytes = response["Body"].read()
+                # Run sync S3 call in thread pool to avoid blocking event loop
+                def _download():
+                    response = s3_client.get_object(Bucket=STORAGE_BUCKET, Key=s3_key)
+                    with response["Body"] as stream:
+                        return stream.read()
+
+                file_bytes = await asyncio.to_thread(_download)
                 logger.info(f"Downloaded {file_id} from S3")
                 return file_bytes
             except s3_client.exceptions.NoSuchKey:
