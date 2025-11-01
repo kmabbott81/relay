@@ -11,6 +11,32 @@ Usage:
 
 Cleanup:
     Remove this module after running codemod to rewrite all imports.
+
+SHIM_REMOVE_PLAN:
+    Timeline: Within 48 hours of merge to main
+
+    Steps:
+    1. Run codemod to rewrite imports:
+       python tools/rewire_imports.py
+       # Rewrites all "from src.*" → "from relay_ai.platform.*"
+
+    2. Verify tests still pass:
+       pytest -q  # Expect all green
+
+    3. Remove shim and hooks:
+       git rm relay_ai/compat/import_redirect.py
+       git rm relay_ai/compat/__init__.py
+       # Remove install_src_redirect() calls from:
+       #   - relay_ai/platform/api/mvp.py
+       #   - relay_ai/platform/tests/tests/conftest.py
+
+    4. Commit and merge:
+       git commit -m "refactor: remove import redirect shim after codemod"
+
+    Dependencies:
+    - tools/rewire_imports.py (create from pattern in user message)
+    - Full test suite passing
+    - No production traffic during codemod execution
 """
 
 import importlib
