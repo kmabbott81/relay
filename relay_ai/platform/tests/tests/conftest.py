@@ -1,5 +1,10 @@
 """Global pytest configuration and fixtures."""
 
+# Install import redirect shim FIRST so all test imports can resolve src.*
+from relay_ai.compat.import_redirect import install_src_redirect
+
+install_src_redirect()
+
 import pytest
 
 

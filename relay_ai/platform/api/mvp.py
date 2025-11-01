@@ -35,6 +35,11 @@ from relay_ai.platform.api.knowledge import close_pool, init_pool, knowledge_rou
 from relay_ai.platform.api.security_router import router as security_router
 from relay_ai.platform.api.teams_router import router as teams_router
 
+# Install import redirect shim for src.* → relay_ai.* during reorganization
+from relay_ai.compat.import_redirect import install_src_redirect
+
+install_src_redirect()
+
 # Fail-closed security validation (enforced in staging/production)
 from relay_ai.platform.security.startup_checks import enforce_fail_closed
 
