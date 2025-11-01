@@ -23,13 +23,13 @@ from src.memory.rls import hmac_user
 from src.monitoring.metrics_adapter import (
     record_api_error,
     record_file_upload,
-    record_vector_search,
     record_index_operation,
+    record_vector_search,
 )
 from src.stream.auth import verify_supabase_jwt
 
 # Initialize router
-router = APIRouter(prefix="/api/v2/knowledge", tags=["Knowledge API"])
+router = APIRouter(prefix="/api/v1/knowledge", tags=["Knowledge API"])
 
 
 # ============================================================================
@@ -175,7 +175,7 @@ async def upload_file(
             await file.seek(0)
 
         if file_size > 50 * 1024 * 1024:  # 50MB
-            metrics.record_file_upload_error("file_too_large")
+            record_api_error("file_too_large", 413, request_id=request_id)
             raise HTTPException(status_code=413, detail="File exceeds 50MB limit") from None
 
         # 4. Create file entry in DB (RLS enforced at insert via trigger)
@@ -216,9 +216,9 @@ async def upload_file(
 
     except HTTPException:
         raise
-    except Exception:
-        record_file_upload_error("unknown_error")
-        raise HTTPException(status_code=500, detail="Internal server error") from None
+    except Exception as e:
+        record_api_error("file_upload_error", 500, request_id=request_id)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 # ============================================================================

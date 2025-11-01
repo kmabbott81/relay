@@ -4,14 +4,18 @@ Sprint 46: Added /metrics endpoint and telemetry middleware.
 Sprint 49 Phase B: Added /actions endpoints with preview/confirm workflow.
 """
 
+import asyncio
+import json
 import os
+import time
 from base64 import b64encode
+from collections.abc import AsyncIterator
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -20,7 +24,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 from .auth.security import require_scopes
+from .knowledge import router as knowledge_router
 from .limits.limiter import RateLimitExceeded, get_rate_limiter
+
 # Note: stream auth module imports deferred to avoid startup issues
 # from .stream.auth import generate_anon_session_token, verify_supabase_jwt
 # from .stream.limits import RateLimiter
@@ -157,7 +163,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=False,  # No cookies needed
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS", "DELETE"],
     allow_headers=["Content-Type", "Idempotency-Key", "X-Signature", "Authorization"],  # Sprint 50: +Authorization
     expose_headers=[
         "X-Request-ID",
@@ -169,6 +175,9 @@ app.add_middleware(
     ],  # Sprint 51 P2: +Rate limit headers
     max_age=600,  # Cache preflight for 10 minutes
 )
+
+# R2 Phase 3: Register Knowledge API router
+app.include_router(knowledge_router)
 
 
 # Sprint 51 Phase 2: Rate limit exception handler
@@ -1657,11 +1666,6 @@ def get_demo_outbox():
 # Sprint 61a: Magic Box Interface & SSE Streaming
 # ============================================================================
 
-import asyncio
-import json
-import time
-from collections.abc import AsyncIterator
-
 
 class SSEEventBuffer:
     """Buffer for SSE events with backpressure handling."""
@@ -1755,7 +1759,7 @@ async def create_anon_session():
         raise HTTPException(
             status_code=500,
             detail=f"Error creating session: {str(e)}",
-        )
+        ) from e
 
 
 @app.get("/api/v1/stream")
@@ -1848,6 +1852,7 @@ async def stream_response(
     except Exception as e:
         # Log but don't fail on rate limiter connection issues during development
         import traceback
+
         print(f"[WARN] Rate limiter check failed (non-blocking): {e}")
         traceback.print_exc()
 
@@ -1952,7 +1957,7 @@ async def stream_response(
                 await asyncio.sleep(interval)
                 if not state.is_closed:
                     event_id = state.next_event_id()
-                    heartbeat_event = await format_sse_event("heartbeat", {}, event_id)
+                    await format_sse_event("heartbeat", {}, event_id)
                     # Note: In real implementation, would queue this to the stream
                     # For now, heartbeats are implicit in streaming
         except asyncio.CancelledError:
