@@ -57,7 +57,12 @@
       "Bash(git push:*)",
       "Bash(gh pr create:*)",
       "Bash(grep:*)",
-      "Bash(git ls-tree:*)"
+      "Bash(git ls-tree:*)",
+      "Bash(for:*)",
+      "Bash(do echo \"Check $i...\")",
+      "Bash(break)",
+      "Bash(STAGING_HOST=\"https://relay-production-f2a6.up.railway.app\" python:*)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []
