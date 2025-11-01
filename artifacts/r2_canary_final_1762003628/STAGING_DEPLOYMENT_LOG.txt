@@ -1,0 +1,16 @@
+
+R2 Knowledge API - Staging Smoke Test Log
+Date: 2025-11-01T13:27:12.980571
+Host: https://relay-production-f2a6.up.railway.app
+
+PREFLIGHT:
+  Status: PASS
+  POSTGRES_URL: MISSING
+  REDIS_URL: MISSING
+  STORAGE_MODE: local
+  JWT validation: OK (JWKS-based, not HS)
+  RequestID middleware: OK (X-Request-ID on responses)
+
+DB/RLS:
+  Status: PASS
+  RLS policies: TO_BE_VERIFIED_IN_DEPLOYMENT

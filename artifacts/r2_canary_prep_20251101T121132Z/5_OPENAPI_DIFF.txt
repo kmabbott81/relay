@@ -1,0 +1,348 @@
+=== R1 vs R2 Phase 3 API Diff ===
+Date: 2025-11-01
+
+---
+
+## OVERVIEW
+
+R2 Phase 3 adds a new Knowledge API subsystem for document ingestion and semantic search.
+
+**R1 Endpoints:** 20 routes (preserved, unchanged)
+**R2 New Endpoints:** 5 routes (Knowledge API)
+**Total:** 25 routes
+
+**Backward Compatibility:** 100% - All R1 endpoints untouched
+
+---
+
+## R1 ENDPOINTS (PRESERVED)
+
+### Memory Management
+- POST   /api/v1/stream/chat         ← Session chat with memory
+- GET    /api/v1/stream/history      ← Retrieve conversation history
+- DELETE /api/v1/stream/memory       ← Clear session memory
+
+### Streaming
+- GET  /api/v1/stream               ← SSE streaming with recovery
+- POST /api/v1/stream               ← SSE streaming (POST variant)
+
+### Actions (Workflow Execution)
+- GET    /actions                   ← List available actions
+- POST   /actions/preview           ← Preview action (dry-run)
+- POST   /actions/execute           ← Execute action
+
+### Audit Logs
+- GET    /audit                     ← Query audit logs (admin only)
+
+### OAuth
+- GET    /oauth/google/authorize    ← Initiate Google OAuth
+- GET    /oauth/google/callback     ← Handle OAuth callback
+- GET    /oauth/google/status       ← Check OAuth connection
+
+### AI Orchestration
+- POST   /ai/plan                   ← Generate action plan (v1)
+- POST   /ai/plan2                  ← Generate action plan (v2, strict JSON)
+- POST   /ai/execute                ← Enqueue planned actions
+- GET    /ai/jobs                   ← List AI jobs (workspace-scoped)
+- GET    /ai/jobs/{job_id}          ← Get job status
+
+### Utilities
+- GET    /_stcore/health            ← Health check
+- GET    /ready                     ← Readiness probe
+- GET    /version                   ← Version metadata
+- GET    /metrics                   ← Prometheus metrics
+
+### Dev/Demo
+- GET    /dev/outbox                ← Demo outbox (dev mode)
+- POST   /api/v1/anon_session       ← Create anon session
+- GET    /magic                     ← Magic Box interface (SSE demo)
+
+---
+
+## R2 PHASE 3 NEW ENDPOINTS
+
+### Knowledge API (5 new routes at /api/v1/knowledge/*)
+
+**1. Upload File**
+```
+POST /api/v1/knowledge/upload
+Status: 202 Accepted (async processing)
+Authentication: JWT Bearer (required)
+Request:
+  - file: UploadFile (PDF, DOCX, TXT, MD, PNG, JPG, WEBP)
+  - title: Optional[str]
+  - description: Optional[str]
+  - source: Optional[str] = "upload"
+  - tags: Optional[str] = "[]"
+Response: FileUploadResponse
+  - file_id: UUID
+  - status: "queued"
+  - request_id: UUID
+  - message: str
+  - expected_completion_ms: int
+Security:
+  - JWT validation (401 if missing/invalid)
+  - File size limit: 50MB
+  - MIME type whitelist enforced
+  - RLS: File stored in authenticated user's namespace
+  - Rate limiting: Per-user (100 req/hour free tier)
+Headers (Response):
+  - X-Request-ID: Unique request ID for tracing
+  - X-RateLimit-Limit: 100
+  - X-RateLimit-Remaining: Decremented per request
+  - X-RateLimit-Reset: Unix timestamp (epoch + 1 hour)
+  - Retry-After: On 429 responses
+```
+
+**2. Index File (Generate Embeddings)**
+```
+POST /api/v1/knowledge/index
+Status: 200 OK
+Authentication: JWT Bearer (required)
+Request: FileIndexRequest
+  - file_id: UUID
+  - chunk_strategy: "sentence" | "paragraph" | "semantic" (default: sentence)
+  - embedding_model: "ada-002" | "embedding-3-small" (default: ada-002)
+Response: FileIndexResponse
+  - file_id: UUID
+  - chunks_created: int
+  - tokens_processed: int
+  - embedding_latency_ms: int
+  - embedding_model_used: str
+  - vectors_stored: int
+  - file_url: str
+  - status: "indexed"
+Security:
+  - JWT validation
+  - Ownership check: Only file owner can index
+  - RLS: Embeddings stored in user's namespace
+  - Circuit breaker: 503 if embedding service unavailable
+```
+
+**3. Search Knowledge Base**
+```
+POST /api/v1/knowledge/search
+Status: 200 OK
+Authentication: JWT Bearer (required)
+Request: SearchRequest
+  - query: str (search prompt)
+  - top_k: int = 10 (max results)
+  - similarity_threshold: float = 0.5 (0.0-1.0)
+  - query_embedding: Optional[List[float]] (pre-computed embedding)
+  - filters: Optional[Dict] (file_id, tags, date range)
+Response: SearchResponse
+  - query: str
+  - results: List[SearchResult]
+    - file_id: UUID
+    - chunk_id: UUID
+    - similarity_score: float
+    - text: str (chunk content)
+    - metadata: Dict (encrypted AAD-bound)
+  - total_results: int
+  - latency_ms: int
+  - embedding_model_used: str
+  - cache_hit: bool
+Security:
+  - JWT validation
+  - RLS: Only user's files returned
+  - AAD verification: Metadata must match binding
+  - Info disclosure: Generic error on AAD mismatch (404, not 403)
+Metrics:
+  - query_latency_p95_ms: Target ≤400ms
+  - results_per_query: Average count
+  - cache_hit_rate: %
+```
+
+**4. List Files**
+```
+GET /api/v1/knowledge/files?limit=20&offset=0
+Status: 200 OK
+Authentication: JWT Bearer (required)
+Request:
+  - limit: int (1-100, default 20)
+  - offset: int (≥0, default 0)
+Response: FileListResponse
+  - files: List[FileMetadata]
+    - id: UUID
+    - title: str
+    - source: str
+    - file_size_bytes: int
+    - chunks_count: int
+    - created_at: ISO8601 timestamp
+    - indexed_at: Optional[ISO8601 timestamp]
+    - tags: List[str]
+  - total: int (total files for this user)
+  - limit: int
+  - offset: int
+  - next_page_url: Optional[str]
+Security:
+  - JWT validation
+  - RLS: Only user's files listed
+```
+
+**5. Delete File**
+```
+DELETE /api/v1/knowledge/files/{file_id}
+Status: 204 No Content
+Authentication: JWT Bearer (required)
+Response: Empty (204)
+Security:
+  - JWT validation
+  - Ownership check: Only file owner can delete
+  - RLS: File must belong to authenticated user
+  - Cascade: All embeddings for this file also deleted
+```
+
+---
+
+## SECURITY ENHANCEMENTS
+
+### All 5 Knowledge API Endpoints Enforce:
+
+**1. JWT Authentication**
+- Bearer token required in Authorization header
+- verify_supabase_jwt() validates signature + expiration
+- 401 response if missing, invalid, or expired
+
+**2. Row-Level Security (RLS)**
+- PostgreSQL policies per endpoint
+- User identified by user_hash = HMAC(user_id)
+- Set via: `SET app.user_hash = $1` (parameterized, no SQLi)
+- Fail-closed: Missing user_hash prevents query execution
+- Per-transaction scope: Context reset on transaction boundary
+
+**3. Per-User Rate Limiting**
+- Redis bucket per user_hash
+- 100 requests/hour free tier
+- Headers returned: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
+- 429 Too Many Requests response with Retry-After header
+- **Critical:** State is per-user, not global - User A's limit doesn't affect User B
+
+**4. Advanced Authenticated Additional Data (AAD)**
+- File metadata encrypted with AES-256-GCM
+- AAD binding: HMAC(user_hash || file_id) prevents tampering
+- Decryption fails if AAD doesn't match (user cannot modify metadata)
+- Response: 404 (not 403) to prevent existence oracle attacks
+
+**5. Request Tracing**
+- X-Request-ID header (UUID) on all responses
+- Unique per request for end-to-end tracing
+- Enables correlation with Datadog, Honeycomb, etc.
+
+---
+
+## ERROR RESPONSES
+
+All endpoints return standardized ErrorResponse:
+```json
+{
+  "error_code": "RATE_LIMIT_EXCEEDED|JWT_INVALID|RLS_VIOLATION|...",
+  "detail": "User-friendly message (no sensitive info)",
+  "request_id": "UUID",
+  "suggestion": "Actionable guidance (e.g., 'Retry in 60 seconds')"
+}
+```
+
+**No Stack Traces Exposed:** All errors sanitized via sanitize_error_detail()
+
+---
+
+## METRICS INTEGRATION
+
+Knowledge API wired to R1 metrics adapter:
+- `record_api_error(error_code, status_code, request_id)`
+- `record_file_upload(file_size_bytes, mime_type, request_id)`
+- `record_vector_search(query_tokens, results_count, latency_ms)`
+- `record_index_operation(operation, item_count)`
+
+Metrics exported to Prometheus at `/metrics` endpoint.
+
+---
+
+## CORS CONFIGURATION
+
+Knowledge API endpoints exposed via CORS:
+- **Allowed Methods:** GET, POST, DELETE, OPTIONS
+- **Allowed Headers:** Content-Type, Authorization, X-Request-ID
+- **Exposed Headers:**
+  - X-Request-ID
+  - X-RateLimit-Limit
+  - X-RateLimit-Remaining
+  - X-RateLimit-Reset
+  - Retry-After
+
+---
+
+## VERSIONING & STABILITY
+
+**API Version:** /api/v1/knowledge
+- v1 tagged as stable
+- Breaking changes require v2 (new routes)
+- Existing v1 contracts never change
+
+**Deprecation Policy:**
+- 12-month notice before removal
+- Sunset header included 6 months before removal
+
+---
+
+## MIGRATION GUIDE
+
+**For Existing R1 Applications:**
+
+No migration required. Knowledge API is opt-in:
+1. Verify your JWT tokens are still valid (used for Auth header)
+2. Call new endpoints only when needed: POST /api/v1/knowledge/upload
+3. All R1 endpoints continue working unchanged
+
+**For New Applications:**
+
+Use Knowledge API for document storage:
+```bash
+# 1. Get JWT token
+curl -X POST https://api.example.com/api/v1/anon_session
+
+# 2. Upload file
+curl -X POST https://api.example.com/api/v1/knowledge/upload \
+  -H "Authorization: Bearer $JWT" \
+  -F "file=@document.pdf"
+
+# 3. Wait for indexing (check status via GET /files)
+sleep 5
+
+# 4. Search
+curl -X POST https://api.example.com/api/v1/knowledge/search \
+  -H "Authorization: Bearer $JWT" \
+  -d '{"query": "search term"}'
+```
+
+---
+
+## DEPLOYMENT CHECKLIST
+
+- [x] Knowledge router imported in main app
+- [x] /api/v1/knowledge/* routes registered
+- [x] JWT validation implemented on all endpoints
+- [x] RLS context per-transaction enforced
+- [x] Per-user rate limiting with Redis backing
+- [x] X-Request-ID, X-RateLimit-* headers added
+- [x] Error sanitization to prevent info disclosure
+- [x] Metrics adapter wired to all endpoints
+- [x] CORS headers configured for DELETE method
+- [x] All pre-commit checks passing
+- [ ] DATABASE_URL set in Railway (auto)
+- [ ] REDIS_URL set in Railway (auto)
+- [ ] OAUTH_ENCRYPTION_KEY set in Railway dashboard
+- [ ] Smoke tests pass on staging
+- [ ] Canary deployment approved
+- [ ] Production rollout begins
+
+---
+
+## Summary
+
+R2 Phase 3 adds production-ready document management to the Knowledge API with enterprise security:
+- JWT + RLS + AAD + rate limiting (4-layer defense)
+- Comprehensive error handling and observability
+- 100% backward compatible with R1
+- Ready for production canary rollout

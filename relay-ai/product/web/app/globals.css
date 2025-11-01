@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar for better UX */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0284c7;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0369a1;
+}
+
+/* Focus styles for a11y */
+:focus-visible {
+  outline: 2px solid #0284c7;
+  outline-offset: 2px;
+}
+
+/* Ensure text is readable with proper contrast */
+body {
+  color: #111827;
+  background-color: #ffffff;
+}
+
+/* Landmark navigation for screen readers */
+[role="navigation"] {
+  position: relative;
+}
+
+[role="main"] {
+  display: block;
+}
+
+[role="contentinfo"] {
+  display: block;
+  margin-top: auto;
+}

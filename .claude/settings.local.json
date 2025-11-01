@@ -62,7 +62,11 @@
       "Bash(do echo \"Check $i...\")",
       "Bash(break)",
       "Bash(STAGING_HOST=\"https://relay-production-f2a6.up.railway.app\" python:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(git rm:*)",
+      "Bash(do echo \"=== $dir ===\")",
+      "Bash(git mv:*)",
+      "Bash(ln:*)"
     ],
     "deny": [],
     "ask": []

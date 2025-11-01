@@ -1,0 +1,15 @@
+
+User A Flow (Upload -> Index -> Search):
+  File upload: FAILED
+  File index: FAILED
+  Search results: 0 hits
+
+User B RLS Verification:
+  Search results: 0 hits
+  RLS verified: NO (user can see other users data)
+
+Rate Limit Flood:
+  Total requests: 120
+  Rate limited at request: None
+  Headers present: MISSING
+  Retry-After present: MISSING

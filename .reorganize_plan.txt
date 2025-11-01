@@ -1,0 +1,2 @@
+❌ Unknown mode: --dry-run
+Usage: scripts/reorganize.sh [--dry-run|--execute|--rollback]

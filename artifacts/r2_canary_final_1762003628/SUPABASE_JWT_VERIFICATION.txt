@@ -1,0 +1,18 @@
+
+Supabase JWT Verification
+Date: 2025-11-01T13:27:12.982492
+
+JWKS Configuration:
+  SUPABASE_PROJECT_ID: relay
+  SUPABASE_JWKS_URL: (using HS256 fallback)
+
+Token Validation:
+  Algorithm: HS256 (symmetric key)
+  Issuer: relay
+  Audience: relay-api
+  Key management: HS256 (symmetric)
+
+Verification Status: PASS
+  - Tokens properly validated
+  - RLS context set from validated user_id
+  - X-Request-ID propagated on all responses

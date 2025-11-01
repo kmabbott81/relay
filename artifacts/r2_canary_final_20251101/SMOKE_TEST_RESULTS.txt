@@ -1,0 +1,155 @@
+=== SMOKE TEST EXECUTION PLAN ===
+Date: 2025-11-01
+Environment: STAGING
+Supabase: Configured + Verified
+Deployment: In Progress (awaiting Railway rebuild)
+
+SMOKE TEST SCOPE: 4 Suites, 13 Tests Total
+  Suite A: Authentication + Security Headers (5 tests)
+  Suite B: Cross-Tenant Isolation (RLS) (4 tests)
+  Suite C: Per-User Rate Limiting (2 tests)
+  Suite D: Error Responses + Suggestions (2 tests)
+
+================================================================================
+SUITE A: AUTHENTICATION + SECURITY HEADERS
+================================================================================
+
+A1: No JWT → 401
+  Request: GET /api/v1/knowledge/files (no Authorization header)
+  Expected: 401 Unauthorized
+  Headers checked: X-Request-ID (should be present)
+  Status: [PENDING - awaiting deployment]
+
+A2: Invalid JWT → 401
+  Request: GET /api/v1/knowledge/files -H "Authorization: Bearer invalid.jwt.token"
+  Expected: 401 Unauthorized
+  Status: [PENDING - awaiting deployment]
+
+A3: Valid JWT → 200 OK
+  Request: GET /api/v1/knowledge/files -H "Authorization: Bearer $JWT_A"
+  Expected: 200 OK
+  Status: [PENDING - awaiting deployment]
+
+A4: X-Request-ID header present
+  Request: Any authenticated request
+  Expected: Response includes X-Request-ID header (unique per request)
+  Status: [PENDING - awaiting deployment]
+
+A5: X-RateLimit-* headers present
+  Request: Any authenticated request
+  Expected: Response includes:
+    - X-RateLimit-Limit: 100
+    - X-RateLimit-Remaining: <current>
+    - X-RateLimit-Reset: <unix_timestamp>
+  Status: [PENDING - awaiting deployment]
+
+SUITE A VERDICT: [PENDING]
+
+================================================================================
+SUITE B: CROSS-TENANT ISOLATION (RLS)
+================================================================================
+
+B1: User A uploads file
+  Request: POST /api/v1/knowledge/upload
+    -H "Authorization: Bearer $JWT_A"
+    -F "file=@test_a.txt"
+    -F "metadata={\"title\": \"User A Document\"}"
+  Expected: 200 OK or 202 Accepted
+  Captured: file_id for later verification
+  Status: [PENDING - awaiting deployment]
+
+B2: User B lists files (should not see User A's file)
+  Request: GET /api/v1/knowledge/files
+    -H "Authorization: Bearer $JWT_B"
+  Expected: 200 OK with list of User B's files ONLY
+  Verify: User A's file NOT in response (RLS enforced)
+  Status: [PENDING - awaiting deployment]
+
+B3: User B uploads own file
+  Request: POST /api/v1/knowledge/upload
+    -H "Authorization: Bearer $JWT_B"
+    -F "file=@test_b.txt"
+    -F "metadata={\"title\": \"User B Document\"}"
+  Expected: 200 OK or 202 Accepted
+  Status: [PENDING - awaiting deployment]
+
+B4: User B searches (should only find own file)
+  Request: POST /api/v1/knowledge/search
+    -H "Authorization: Bearer $JWT_B"
+    -H "Content-Type: application/json"
+    -d '{"query": "document"}'
+  Expected: 200 OK with 1 result (User B's file only)
+  Verify: User A's file NOT in results (RLS enforced)
+  Status: [PENDING - awaiting deployment]
+
+SUITE B VERDICT: [PENDING]
+RLS ISOLATION VERIFICATION: [PENDING]
+
+================================================================================
+SUITE C: PER-USER RATE LIMITING
+================================================================================
+
+C1: User A rapid requests (101 total)
+  Request: Loop 101x POST /api/v1/knowledge/search
+    -H "Authorization: Bearer $JWT_A"
+    -d '{"query": "test_query_$i"}'
+  Expected:
+    - Requests 1-100: 200 OK with X-RateLimit-Remaining: 99→98→97...→0
+    - Request 101: 429 Too Many Requests with Retry-After header
+  Status: [PENDING - awaiting deployment]
+
+C2: User B makes 1 request (should not be affected by User A's limit)
+  Request: POST /api/v1/knowledge/search
+    -H "Authorization: Bearer $JWT_B"
+    -d '{"query": "user_b_test"}'
+  Expected: 200 OK with X-RateLimit-Remaining: 99 (User B's counter, not affected)
+  Status: [PENDING - awaiting deployment]
+
+SUITE C VERDICT: [PENDING]
+PER-USER ISOLATION VERIFIED: [PENDING]
+
+================================================================================
+SUITE D: ERROR RESPONSES + SUGGESTIONS
+================================================================================
+
+D1: Invalid MIME type
+  Request: POST /api/v1/knowledge/upload
+    -H "Authorization: Bearer $JWT_A"
+    -H "Content-Type: text/plain"
+    (with invalid file)
+  Expected: 400 Bad Request
+  Verify: Response includes error suggestion (suggestion_for(400))
+  Status: [PENDING - awaiting deployment]
+
+D2: Rate limit exhaustion (429)
+  Request: Make >100 requests rapidly to trigger 429
+  Expected: 429 Too Many Requests
+  Headers: Retry-After: <seconds>, X-RateLimit-Reset: <unix>
+  Verify: Response includes error suggestion (suggestion_for(429))
+  Status: [PENDING - awaiting deployment]
+
+SUITE D VERDICT: [PENDING]
+
+================================================================================
+OVERALL SMOKE TEST SUMMARY
+================================================================================
+
+Suites: 4 total
+Tests: 13 total
+Passed: 0 (awaiting deployment)
+Failed: 0 (awaiting deployment)
+Blocked: 13 (deployment in progress)
+Success Rate: [PENDING]
+
+DEPLOYMENT BLOCKER: Knowledge API endpoints not yet responding
+  Reason: Railway rebuild in progress
+  ETA: 2025-11-01T12:55:00Z
+
+NEXT ACTION:
+  1. Wait for Railway deployment to complete
+  2. Verify /api/v1/knowledge/files responds with 401
+  3. Execute run_r2_phase3_smoke_tests.py
+  4. Collect results and metrics
+  5. Generate final GO/NO-GO decision
+
+APPROVAL GATE: All 13 tests must pass before canary approval

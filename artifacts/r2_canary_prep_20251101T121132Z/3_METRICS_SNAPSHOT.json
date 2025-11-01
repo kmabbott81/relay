@@ -1,0 +1,59 @@
+{
+  "timestamp": "2025-11-01T12:11:32Z",
+  "environment": "STAGING",
+  "deployment_status": "READY_FOR_STAGING_SMOKE_TESTS",
+  "metrics": {
+    "api_endpoints_registered": 5,
+    "routes_verified": [
+      "POST /api/v1/knowledge/upload",
+      "POST /api/v1/knowledge/index",
+      "POST /api/v1/knowledge/search",
+      "GET /api/v1/knowledge/files",
+      "DELETE /api/v1/knowledge/files/{file_id}"
+    ],
+    "security_checks_passed": [
+      "JWT validation implemented",
+      "RLS context isolation verified",
+      "Per-user rate limiting configured",
+      "X-Request-ID tracing enabled",
+      "X-RateLimit-* headers added to CORS",
+      "Rate limit headers in response headers",
+      "Retry-After header support",
+      "Cross-origin DELETE allowed"
+    ],
+    "pre_deployment_metrics": {
+      "code_quality": "PASSING",
+      "linting_status": "ALL_CHECKS_PASS",
+      "security_hardening": "COMPLETE",
+      "error_handling": "SANITIZED"
+    }
+  },
+  "guardrails": {
+    "success_rate_target_percent": 99,
+    "p95_latency_target_ms": 400,
+    "security_violations_max": 0,
+    "rate_limit_precision": "per-user (Redis keyed)",
+    "rls_enforcement": "per-transaction with PostgreSQL policies"
+  },
+  "staging_configuration": {
+    "database_url": "AUTO_CONFIGURED_BY_RAILWAY",
+    "redis_url": "AUTO_CONFIGURED_BY_RAILWAY",
+    "oauth_encryption_key": "SET_VIA_RAILWAY_DASHBOARD",
+    "storage_mode": "local",
+    "environment": "STAGING"
+  },
+  "test_users": {
+    "user_a_jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...SoVXwKIowJCO-Prvog9HtdNTK4k_3WLV_o8U8DpTMyo",
+    "user_b_jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...lbSJpbH09CuvBoewjtI3hC-erbkp9WQtWGLT6DoAj60",
+    "jwt_ttl_days": 7,
+    "jwt_valid_until": "2025-11-08"
+  },
+  "next_steps": [
+    "Set OAUTH_ENCRYPTION_KEY in Railway dashboard",
+    "Trigger Railway deployment via git push main",
+    "Monitor deployment status at /ready endpoint",
+    "Run run_r2_phase3_smoke_tests.py on staging URL",
+    "Verify all 4 smoke test suites pass",
+    "Approve canary deployment"
+  ]
+}

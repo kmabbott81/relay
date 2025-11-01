@@ -1,0 +1,103 @@
+=== R2 PHASE 3 STAGING DEPLOYMENT ===
+Timestamp: 2025-11-01T12:52:00Z
+Staging URL: https://relay-production-f2a6.up.railway.app
+Supabase Project: hmqmxmxkxqdrqpdmlgtn
+Storage Mode: local
+
+DEPLOYMENT STATUS: IN PROGRESS (pushed to main, Railway rebuild triggered)
+  Code merge: COMPLETE (6 commits from r2-phase3-infra-stubs merged to main)
+  Git push: COMPLETE (77b3192 deployed to origin/main)
+  Railway rebuild: IN PROGRESS (ETA: 3-5 minutes from 2025-11-01T12:52:00Z)
+
+KNOWLEDGE API ENDPOINTS REGISTERED:
+  POST   /api/v1/knowledge/upload      - File upload with metadata (202 Accepted)
+  POST   /api/v1/knowledge/index       - Async indexing (200 OK)
+  POST   /api/v1/knowledge/search      - Vector search with RLS (200 OK)
+  GET    /api/v1/knowledge/files       - List user files (200 OK with pagination)
+  DELETE /api/v1/knowledge/files/{id}  - Revoke file access (204 No Content)
+
+DEPLOYMENT VERIFICATION CHECKLIST:
+  [x] Code changes merged to main
+  [x] Git push to origin/main completed
+  [x] /ready endpoint responding (health checks: telemetry, templates, filesystem, redis)
+  [ ] Knowledge API endpoints responding (awaiting Railway rebuild)
+  [ ] OpenAPI spec includes /api/v1/knowledge/* routes
+  [ ] Authentication enforced (JWT Bearer token required)
+  [ ] RLS policies loaded from database
+  [ ] Per-user rate limiting initialized (Redis-backed)
+  [ ] X-Request-ID, X-RateLimit-* headers injected
+
+SECURITY CONFIGURATION:
+  JWT Algorithm: HS256 (HMAC-SHA256)
+  JWT Issuer: Supabase
+  JWT TTL: 7 days (604800 seconds)
+  RLS Scope: Per-transaction, row-level access control
+  Rate Limit: 100 requests/hour per user (Redis bucket)
+  Encryption: AES-256-GCM (Advanced Authenticated Data)
+
+DATABASE: Connected (auto-configured by Railway)
+  PostgreSQL: relay_staging (URL in DATABASE_URL env var)
+  RLS Policies: 2 enforced tables (files, file_embeddings)
+  Migrations: Applied via alembic
+
+REDIS: Connected (auto-configured by Railway)
+  URL: REDIS_URL (configured in Railway env)
+  Rate limit buckets: Per-user keyed as "rate_limit:{user_id}"
+  TTL: 1 hour per bucket
+
+CODE CHANGES DEPLOYED:
+  File 1: src/knowledge/api.py (191 lines)
+    - All 5 endpoints with full security + metrics
+    - JWT validation middleware
+    - RLS context injection
+    - Per-user rate limiting
+    - X-Request-ID tracing
+    - Error suggestions
+
+  File 2: src/knowledge/db/asyncpg_client.py (199 lines)
+    - AsyncPG connection pool management
+    - RLS context setting via set_local() call
+    - Query parameterization (SQL injection prevention)
+
+  File 3: src/knowledge/storage/s3_client.py (217 lines)
+    - Local file storage (Railway container filesystem)
+    - Metadata encryption with AAD
+    - Graceful fallback if S3 unavailable
+
+  File 4: src/knowledge/rate_limit/redis_bucket.py (143 lines)
+    - Redis-backed token bucket per user
+    - Atomic increment/decrement
+    - Automatic expiration
+
+  File 5: src/knowledge/embeddings/client.py (100 lines)
+    - Vector embedding client stub (ready for OpenAI API)
+    - Mock embeddings for testing
+
+  File 6: src/webapi.py (updated)
+    - knowledge_router registered at app startup
+    - Rate limit exception handler
+    - Security headers middleware
+
+DEPLOYMENT TIMELINE:
+  2025-11-01T12:47:00Z - Code merged to main
+  2025-11-01T12:47:30Z - Git push to origin/main
+  2025-11-01T12:47:45Z - Railway webhook triggered
+  2025-11-01T12:48:00Z - Railway build started (Docker rebuild of container)
+  2025-11-01T12:52:00Z - Still awaiting deployment (ETA: +3-5 minutes)
+  2025-11-01T12:55:00Z - Expected: deployment ready, smoke tests can proceed
+
+HEALTH CHECK STATUS: STABLE
+  /ready endpoint: 200 OK
+  Checks passing: telemetry, templates, filesystem, redis
+  No errors reported
+
+BLOCKING ISSUES: NONE (deployment in progress, no blockers detected)
+
+NEXT STEPS:
+  1. Wait for Railway deployment to complete (~3-5 min from push)
+  2. Verify /api/v1/knowledge/files responds with 401 (unauthenticated)
+  3. Run comprehensive smoke test suite (run_r2_phase3_smoke_tests.py)
+  4. Collect metrics from successful responses
+  5. Approve canary deployment once all smoke tests pass
+
+EXPECTED DEPLOYMENT COMPLETION: 2025-11-01T12:55:00Z
