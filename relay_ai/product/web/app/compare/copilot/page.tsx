@@ -9,20 +9,20 @@ export default function ComparisonPage() {
     {
       category: 'Pricing',
       items: [
-        { feature: 'Per-User Cost', relay: '$9–15/month', copilot: '$30/month', winner: 'relay' },
+        { feature: 'Per-User Cost', relay: '$9–15/month', copilot: '$30/month (list)', winner: 'relay' },
         { feature: 'Free Tier', relay: '10/day queries', copilot: 'None', winner: 'relay' },
         { feature: 'Setup Cost', relay: '$0', copilot: '$5–10k IT setup', winner: 'relay' },
-        { feature: 'Volume Discount', relay: 'Yes', copilot: 'Enterprise only', winner: 'relay' },
+        { feature: 'Volume Discount', relay: 'Yes', copilot: 'Enterprise negotiated', winner: 'relay' },
       ],
     },
     {
       category: 'Security & Privacy',
       items: [
-        { feature: 'Data Training', relay: 'Never ✓', copilot: 'Yes ✗', winner: 'relay' },
-        { feature: 'Encryption', relay: 'AES-256-GCM E2E', copilot: 'TLS + MS-managed', winner: 'relay' },
-        { feature: 'Isolation', relay: 'Database RLS', copilot: 'App-level only', winner: 'relay' },
-        { feature: 'Audit Trail', relay: 'Full (per-query)', copilot: 'Limited', winner: 'relay' },
-        { feature: 'Proof', relay: 'Daily reports ✓', copilot: 'Claims only', winner: 'relay' },
+        { feature: 'Data Training', relay: 'No, by design', copilot: 'No, by policy', winner: 'tie' },
+        { feature: 'Encryption Type', relay: 'AES-256-GCM E2E', copilot: 'TLS + MS-managed', winner: 'relay' },
+        { feature: 'Data Isolation', relay: 'Database RLS', copilot: 'App-level + compliance', winner: 'relay' },
+        { feature: 'Audit Trail', relay: 'Full per-query', copilot: 'Compliance scenarios', winner: 'relay' },
+        { feature: 'Security Transparency', relay: 'Daily canary reports', copilot: 'Compliance certs', winner: 'different' },
       ],
     },
     {
@@ -64,7 +64,7 @@ export default function ComparisonPage() {
       total: 14850,
     },
     {
-      name: 'Copilot Pro',
+      name: 'Microsoft Copilot for M365 (List)',
       users: 100,
       licensing: 36000,
       setup: 1500,
@@ -80,10 +80,13 @@ export default function ComparisonPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Relay vs Microsoft Copilot
+            Relay vs Microsoft Copilot for Microsoft 365
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
-            Cheaper. More secure. Faster to deploy. See the side-by-side comparison.
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-2">
+            Cheaper. Different approach to security. Faster to deploy. See the side-by-side comparison.
+          </p>
+          <p className="text-sm text-gray-500">
+            Prices reflect public list as of Nov 1, 2025. Both products protect customer data.
           </p>
 
           {/* Security Badge */}
@@ -155,7 +158,7 @@ export default function ComparisonPage() {
                   <tr className="border-b-2 border-gray-300 bg-gray-50">
                     <th className="py-4 px-6 font-bold text-gray-900">Feature</th>
                     <th className="py-4 px-6 font-bold text-gray-900">Relay</th>
-                    <th className="py-4 px-6 font-bold text-gray-900">Copilot</th>
+                    <th className="py-4 px-6 font-bold text-gray-900">Microsoft Copilot for M365</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -359,6 +362,15 @@ export default function ComparisonPage() {
               </div>
             </a>
           </div>
+        </div>
+      </div>
+
+      {/* Disclaimer Footer */}
+      <div className="bg-gray-100 border-t border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <p className="text-xs text-gray-600 text-center">
+            <strong>Accuracy Note:</strong> Prices reflect public list pricing as of Nov 1, 2025, and may vary by contract. Both Relay and Microsoft Copilot for Microsoft 365 protect customer data and don't train on customer prompts. Relay publishes daily security canary reports; Microsoft publishes compliance certifications. For the latest pricing and features, visit relay.ai/pricing and microsoft.com/copilot-for-microsoft-365.
+          </p>
         </div>
       </div>
 
