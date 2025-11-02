@@ -122,6 +122,190 @@ IF task_type == "monitoring" OR "observability" OR "slo_sla_definition" THEN
   ✓ THEN verify observability agent deployment
 ```
 
+### 8️⃣ **TRIGGER: Multi-Source Infrastructure Discovery**
+
+**WHEN**:
+- [ ] User mentions "setup" OR "config" OR "deploy"
+- [ ] User asks about environment status or configuration
+- [ ] ANY new task related to infrastructure, deployments, or external services
+- [ ] Project-historian is about to recommend creating NEW infrastructure
+
+**PRIMARY RESPONSIBILITY**: Agent-deployment-monitor (uses project-historian + data-connector-architect)
+
+**MANDATORY CHECKS** (Must verify ALL sources before implementing):
+
+#### A. Railway Services & Secrets
+```bash
+# Check connected services
+railway service list
+
+# Check environment variables (all services)
+railway variables              # Prometheus
+railway variables --service relay-grafana
+railway variables --service relay-postgres (if exists)
+railway variables --service relay-api (or main relay service)
+
+# Report findings:
+- Which services exist?
+- What environment variables are set?
+- What secrets/credentials are stored?
+- What database connections exist?
+- What domains/URLs are active?
+```
+
+#### B. GitHub Repository
+```bash
+# Check for secrets (names only, not values)
+gh secret list
+
+# Check for existing workflows
+gh workflow list
+
+# Check recent commits for infrastructure changes
+git log --oneline --all --grep="supabase\|vercel\|railway\|docker" | head -20
+
+# Check branches for infrastructure work
+git branch -a | grep -i "infra\|deploy\|setup"
+
+# Report findings:
+- What GitHub secrets exist?
+- What CI/CD workflows are configured?
+- Any recent infrastructure commits?
+```
+
+#### C. Supabase (If project uses Supabase)
+```bash
+# User must provide Supabase credentials or project ID
+# Check: Does user have supabase CLI installed?
+supabase projects list
+
+# If using CLI:
+supabase db list
+supabase storage list
+
+# OR: Ask user to confirm in Supabase dashboard:
+# - Go to: https://supabase.com/dashboard
+# - List your projects
+# - Report any that match pattern: relay-*, staging*, production*
+```
+
+#### D. Vercel (If project uses Vercel)
+```bash
+# Check deployed projects
+vercel projects
+
+# List deployments
+vercel deployments
+
+# Check environment variables (if deployed)
+vercel env ls
+
+# Report findings:
+- What Vercel projects exist?
+- What domains are configured?
+- What environment variables are set?
+- What are latest deployment statuses?
+```
+
+#### E. Docker (If using containers)
+```bash
+# Check local images
+docker images | grep -i relay
+
+# Check running containers
+docker ps -a | grep -i relay
+
+# Check docker-compose
+docker-compose ps (if using docker-compose)
+
+# Report findings:
+- What Docker images exist?
+- What containers are running?
+- What ports are exposed?
+```
+
+#### F. Git Repository Analysis
+```bash
+# Search for all infrastructure references
+grep -r "supabase\|vercel\|railway\|docker\|postgres\|redis" \
+  --include="*.md" \
+  --include="*.env*" \
+  --include="*.yaml" \
+  --include="*.yml" \
+  --include="*.json" \
+  . | head -50
+
+# Search commit history
+git log --all -p --grep="infrastructure\|setup\|config" | head -100
+
+# Report findings:
+- What infrastructure is documented?
+- What credentials/configs are in git history?
+- Any TODO or FIXME items related to infrastructure?
+```
+
+#### G. Local Environment Files (Carefully!)
+```bash
+# Check what .env* files exist (DON'T read contents without permission)
+ls -la .env* 2>/dev/null
+
+# Report findings:
+- What environment files exist?
+- Are they in .gitignore?
+- When were they last modified?
+```
+
+**ACTION TAKEN**:
+
+After comprehensive check, report findings as structured table:
+
+| Service | Status | Details | Credentials Location |
+|---------|--------|---------|----------------------|
+| Railway | Active | Services: api, prometheus, grafana | Railway dashboard |
+| Supabase | Active | Project ID: hmqmxmxkxqdrqpdmlgtn | Railway secrets + Supabase dashboard |
+| Vercel | [Pending] | [Details] | Vercel dashboard + GitHub secrets |
+| GitHub | Active | Secrets: [count], Workflows: [count] | GitHub repo settings |
+| Docker | [Status] | [Details] | Local machine |
+| Git | Active | [Recent commits] | Git history |
+
+**DECISION LOGIC**:
+
+```
+IF any infrastructure found:
+  ✅ Report ALL found infrastructure BEFORE recommending new setup
+  ✅ Ask user: "Use existing OR create new?"
+  ✅ If using existing: Extract credentials and update deployment plan
+  ✅ If creating new: Proceed with new infrastructure recommendations
+
+IF no infrastructure found:
+  ✅ Proceed with fresh setup recommendations
+  ✅ Document what was created and where credentials are stored
+```
+
+**FAILURE MODES**:
+
+- ⚠️ If user lacks CLI tool (railway, vercel, gh): Fall back to manual verification
+- ⚠️ If credentials not in expected locations: Ask user directly "Where are your [service] credentials?"
+- ⚠️ If infrastructure partially configured: Flag as "INCOMPLETE" and ask user for clarification
+
+### UPDATED CLASSIFICATION → TRIGGER MAPPING
+
+When user task involves ANY of these keywords:
+- "setup" / "configure" / "deploy"
+- "staging" / "beta" / "production"
+- "supabase" / "vercel" / "railway" / "docker"
+- "secrets" / "credentials" / "environment"
+- "infrastructure" / "architecture"
+
+**PRIMARY TRIGGER**: agent-deployment-monitor
+**REASON**: Must audit all infrastructure BEFORE recommending changes
+
+**agent-deployment-monitor MUST then**:
+1. Run comprehensive infrastructure discovery (see Trigger Rule #8)
+2. Route findings to project-historian for duplication analysis
+3. Route findings to security-reviewer for credential safety check
+4. Report all findings to user BEFORE proceeding with implementation
+
 ### Multi-Agent Coordination Protocol
 
 When multiple agents are triggered:
@@ -192,6 +376,46 @@ Action: agent-deployment-monitor
   → BLOCK task immediately (security-critical)
   → Report deployment failure
   → Suggest: Fix security-reviewer deployment before proceeding
+```
+
+### INFRASTRUCTURE REGISTRY (Maintained by agent-deployment-monitor)
+
+**Last Updated**: [Auto-update on each deployment audit]
+
+#### Services Currently Active
+
+| Service | Type | Location | Status | Credentials | Last Verified |
+|---------|------|----------|--------|-------------|----------------|
+| Railway | Container | [URL] | Active | Railway secrets | 2025-11-02 |
+| Supabase | Database | hmqmxmxkxqdrqpdmlgtn | Active | Railway secrets | 2025-11-02 |
+| Vercel | Frontend | [Pending] | TBD | GitHub secrets | [TBD] |
+| PostgreSQL | Database | Railway | Active | DATABASE_URL | 2025-11-02 |
+| Redis | Cache | Railway | [TBD] | [TBD] | [TBD] |
+| GitHub | Source | github.com/kylem/relay-ai | Active | GitHub secrets | 2025-11-02 |
+| Docker | Container | [TBD] | [TBD] | [TBD] | [TBD] |
+
+#### Credentials Storage Map
+
+| Credential | Location | Owner | Rotated | Next Rotation |
+|-----------|----------|-------|---------|----------------|
+| RAILWAY_TOKEN | Railway env | kylem | [Date] | [Date + 90d] |
+| SUPABASE_JWT_SECRET | Railway env | kylem | [Date] | [Date + 90d] |
+| VERCEL_TOKEN | GitHub secrets | kylem | [TBD] | [TBD] |
+| GITHUB_TOKEN | [TBD] | [TBD] | [TBD] | [TBD] |
+| DATABASE_PUBLIC_URL | Railway env | kylem | [Never rotated] | Review needed |
+
+#### Environment Map
+
+```
+BETA (Current):
+  Frontend: relay-beta.vercel.app (Vercel)
+  Backend: relay-production-f2a6.up.railway.app (Railway)
+  Database: Supabase relay-staging (hmqmxmxkxqdrqpdmlgtn)
+
+PRODUCTION (Future):
+  Frontend: relay.ai (Vercel - TBD)
+  Backend: api.relay.ai (Railway - TBD)
+  Database: Supabase relay-production (TBD)
 ```
 
 ### Documentation Reference
