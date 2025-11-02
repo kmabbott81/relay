@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { SecurityBadge } from '@/components/SecurityBadge';
-import { CheckIcon, XIcon, ArrowRightIcon } from 'lucide-react';
+import { CheckIcon } from 'lucide-react';
 
 export default function ComparisonPage() {
   const comparisonData = [

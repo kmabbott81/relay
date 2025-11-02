@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { SecurityBadge } from '@/components/SecurityBadge';
 
@@ -123,7 +125,7 @@ export default function Home() {
                 </tr>
                 <tr className="border-b border-gray-200">
                   <td className="py-3 px-4">Data Training</td>
-                  <td className="py-3 px-4 className="font-bold text-security-red">Yes</td>
+                  <td className="py-3 px-4 font-bold text-security-red">Yes</td>
                   <td className="py-3 px-4 font-bold text-security-green">Never</td>
                 </tr>
                 <tr className="border-b border-gray-200">
