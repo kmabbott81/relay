@@ -1,0 +1,308 @@
+name: Deploy Full Stack (API + Web + DB)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'relay_ai/**'
+      - 'Dockerfile'
+      - 'requirements.txt'
+      - 'pyproject.toml'
+      - 'alembic/**'
+  workflow_dispatch:  # Manual trigger
+
+env:
+  REGISTRY: ghcr.io
+  RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+  RAILWAY_APP_URL: ${{ secrets.RAILWAY_APP_URL || 'https://relay-production-f2a6.up.railway.app' }}
+  VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL || 'https://relay-beta.vercel.app' }}
+
+jobs:
+  # CRITICAL FIX #1: Run database migrations BEFORE API deployment
+  migrate-db:
+    name: Run Database Migrations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify DATABASE_URL is set
+        run: |
+          if [ -z "${{ secrets.DATABASE_PUBLIC_URL }}" ]; then
+            echo "ERROR: DATABASE_PUBLIC_URL secret not set"
+            exit 1
+          fi
+          echo "✓ DATABASE_URL is configured"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify database connectivity
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_PUBLIC_URL }}
+        run: |
+          python -c "
+          import psycopg2
+          try:
+              conn = psycopg2.connect('${{ secrets.DATABASE_PUBLIC_URL }}')
+              conn.close()
+              print('✓ Database connectivity verified')
+          except Exception as e:
+              print(f'✗ Database connection failed: {e}')
+              exit(1)
+          "
+
+      - name: Run Alembic migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_PUBLIC_URL }}
+        run: |
+          echo "Running database migrations..."
+          alembic upgrade head || {
+            echo "✗ Migration failed"
+            exit 1
+          }
+          echo "✓ Migrations completed successfully"
+          alembic current
+
+  deploy-api:
+    name: Deploy API to Railway
+    runs-on: ubuntu-latest
+    needs: migrate-db
+    outputs:
+      api_url: ${{ env.RAILWAY_APP_URL }}
+      deployment_id: ${{ steps.deploy.outputs.deployment_id }}
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify required secrets
+        run: |
+          missing=()
+          [ -z "${{ secrets.RAILWAY_TOKEN }}" ] && missing+=("RAILWAY_TOKEN")
+          [ -z "${{ secrets.RAILWAY_PROJECT_ID }}" ] && missing+=("RAILWAY_PROJECT_ID")
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ERROR: Missing secrets: ${missing[*]}"
+            exit 1
+          fi
+          echo "✓ All required secrets are configured"
+
+      - name: Install Railway CLI
+        run: |
+          npm install -g @railway/cli@5.8.1 2>/dev/null || \
+          npm install -g @railway/cli
+          railway --version
+
+      - name: Deploy to Railway
+        id: deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+        run: |
+          echo "Linking Railway project..."
+          railway link $RAILWAY_PROJECT_ID
+
+          echo "Deploying API (this may take 2-3 minutes)..."
+          railway up --detach
+
+          sleep 60
+
+          DEPLOYMENT_ID=$(railway status --json 2>/dev/null | jq -r '.latestDeployment.id // "unknown"')
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" = "null" ]; then
+            echo "✗ Failed to get deployment ID"
+            exit 1
+          fi
+
+          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+          echo "✓ Deployment triggered: $DEPLOYMENT_ID"
+
+      - name: Mask sensitive deployment ID
+        run: |
+          echo "::add-mask::${{ steps.deploy.outputs.deployment_id }}"
+
+      - name: Verify API is healthy
+        timeout-minutes: 5
+        run: |
+          echo "Waiting for API to become healthy (max 2.5 min)..."
+          for i in {1..30}; do
+            if curl -f --max-time 10 --retry 1 \
+                 ${{ env.RAILWAY_APP_URL }}/health \
+                 -H "Accept: application/json" 2>/dev/null | grep -q '"status"'; then
+              echo "✓ API is healthy"
+              exit 0
+            fi
+            echo "Attempt $i/30: API not ready yet (${i}0 sec elapsed)..."
+            sleep 5
+          done
+
+          echo "✗ API failed to become healthy after deployment"
+          echo "Check logs: railway logs --follow"
+          exit 1
+
+  deploy-web:
+    name: Deploy Web to Vercel
+    runs-on: ubuntu-latest
+    needs: deploy-api
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify required secrets
+        run: |
+          missing=()
+          [ -z "${{ secrets.VERCEL_TOKEN }}" ] && missing+=("VERCEL_TOKEN")
+          [ -z "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" ] && missing+=("NEXT_PUBLIC_SUPABASE_URL")
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ERROR: Missing secrets: ${missing[*]}"
+            exit 1
+          fi
+          echo "✓ All required secrets are configured"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        working-directory: relay_ai/product/web
+        run: |
+          echo "Installing dependencies..."
+          npm ci --prefer-offline --no-audit || npm install
+          echo "✓ Dependencies installed"
+
+      - name: Build Next.js app
+        working-directory: relay_ai/product/web
+        env:
+          NEXT_PUBLIC_API_URL: ${{ needs.deploy-api.outputs.api_url }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          npm run build
+          echo "✓ Build successful"
+
+      - name: Mask Vercel token
+        run: |
+          echo "::add-mask::${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Deploy to Vercel
+        working-directory: relay_ai/product/web
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          NEXT_PUBLIC_API_URL: ${{ needs.deploy-api.outputs.api_url }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          npm install -g vercel
+          echo "Deploying to Vercel..."
+          vercel --prod --yes \
+            --token "$VERCEL_TOKEN" \
+            --build-env NEXT_PUBLIC_API_URL="${{ needs.deploy-api.outputs.api_url }}" \
+            --build-env NEXT_PUBLIC_SUPABASE_URL="${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" \
+            --build-env NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}"
+          echo "✓ Deployment to Vercel complete"
+
+  smoke-tests:
+    name: Run Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [deploy-api, deploy-web]
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test API health endpoint
+        timeout-minutes: 2
+        run: |
+          echo "Testing API health..."
+          curl -f --max-time 10 --retry 2 \
+            ${{ env.RAILWAY_APP_URL }}/health || exit 1
+          echo "✓ API health check passed"
+
+      - name: Test Knowledge API endpoint
+        timeout-minutes: 2
+        run: |
+          echo "Testing Knowledge API..."
+          curl -f --max-time 10 --retry 2 \
+            ${{ env.RAILWAY_APP_URL }}/api/v1/knowledge/health || exit 1
+          echo "✓ Knowledge API check passed"
+
+      - name: Wait for Vercel CDN propagation
+        run: |
+          echo "Waiting 60s for Vercel CDN propagation..."
+          sleep 60
+
+      - name: Test web app loads
+        timeout-minutes: 3
+        run: |
+          echo "Testing web app..."
+          for i in {1..15}; do
+            if curl -f --max-time 10 \
+                 ${{ env.VERCEL_APP_URL }}/beta; then
+              echo "✓ Web app loaded successfully"
+              exit 0
+            fi
+            echo "Attempt $i/15: Waiting for web app..."
+            sleep 10
+          done
+          echo "✗ Web app failed to load"
+          exit 1
+
+  notify-success:
+    name: Notify Deployment Success
+    runs-on: ubuntu-latest
+    needs: [deploy-api, deploy-web, smoke-tests]
+    if: success()
+
+    steps:
+      - name: Create deployment summary
+        run: |
+          cat > deployment-summary.txt <<EOF
+          ✅ RELAY AI FULL STACK DEPLOYMENT COMPLETE
+
+          Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          Services:
+          - API: ${{ env.RAILWAY_APP_URL }}
+          - Web: ${{ env.VERCEL_APP_URL }}/beta
+          - Deployment ID: ${{ needs.deploy-api.outputs.deployment_id }}
+
+          Status: All services healthy and operational
+
+          Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EOF
+          cat deployment-summary.txt
+
+      - name: Upload deployment summary
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-summary
+          path: deployment-summary.txt
+
+  notify-failure:
+    name: Notify Deployment Failure
+    runs-on: ubuntu-latest
+    needs: [migrate-db, deploy-api, deploy-web, smoke-tests]
+    if: failure()
+
+    steps:
+      - name: Log failure details
+        run: |
+          echo "Deployment failed!"
+          echo "Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "Check logs for details"

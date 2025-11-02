@@ -1,0 +1,524 @@
+# Prometheus Alert Rules - Deployment Pipeline
+#
+# This file contains alert rules for monitoring the automated deployment pipeline.
+# Alerts are grouped by severity level with corresponding runbooks and dashboards.
+#
+# Severity Levels:
+#   - CRITICAL: Page on-call immediately
+#   - HIGH: Alert ops team (Slack)
+#   - MEDIUM: Create ticket
+#   - LOW: Log for analysis
+
+groups:
+  - name: deployment_alerts
+    interval: 30s
+    rules:
+
+    # ========================================
+    # CRITICAL ALERTS - Page immediately
+    # ========================================
+
+    - alert: DeploymentFailed
+      expr: |
+        increase(deployment_total{status="failure"}[5m]) > 0
+      for: 2m
+      labels:
+        severity: critical
+        component: deployment_pipeline
+        oncall: "yes"
+        service: "{{ $labels.service }}"
+      annotations:
+        summary: "CRITICAL: Deployment failed at {{ $labels.stage }}"
+        description: |
+          Deployment ID: {{ $labels.deployment_id }}
+          Service: {{ $labels.service }}
+          Stage: {{ $labels.stage }}
+          Environment: {{ $labels.environment }}
+          Error Type: {{ $labels.error_type }}
+
+          Immediate Actions:
+          1. Check deployment logs: GitHub Actions
+          2. Identify which stage failed
+          3. Verify rollback status
+
+          If rollback succeeded:
+          - Monitor post-deployment error rates
+          - Investigate root cause
+
+          If rollback failed:
+          - Manual intervention required
+          - Contact infrastructure team
+        runbook_url: "https://docs.relay.ai/runbooks/DEPLOYMENT_FAILED"
+        dashboard_url: "https://grafana/d/deployment-pipeline"
+        alert_id: "DEP001"
+
+    - alert: HealthCheckFailuresPostDeploy
+      expr: |
+        increase(api_health_check_failures_total{environment="production"}[5m]) > 5
+      for: 3m
+      labels:
+        severity: critical
+        component: deployment_health_check
+        oncall: "yes"
+      annotations:
+        summary: "CRITICAL: API health checks failing after deployment"
+        description: |
+          Deployment ID: {{ $labels.deployment_id }}
+          Failed Checks: {{ $value }} in last 5 minutes
+          Environment: {{ $labels.environment }}
+          Status: {{ $labels.status }}
+
+          Health check is unable to reach the API endpoint.
+
+          Immediate Actions:
+          1. SSH to API instance and check status
+          2. Check application logs for errors
+          3. Verify database connectivity
+          4. Check external dependencies (Redis, Supabase, embeddings)
+          5. If unresolved after 2 min, trigger automatic rollback
+
+          Common Causes:
+          - Application crashed after deployment
+          - Database connection pool exhausted
+          - External service timeout (Supabase, embeddings)
+          - Network/DNS issue
+          - OOM (Out of Memory) killer
+
+          Debugging:
+          - SSH: ssh -i ~/.ssh/id_rsa app@relay-prod
+          - Logs: docker logs relay-api-prod
+          - Memory: free -h
+          - Disk: df -h
+          - Connections: netstat -an | grep ESTABLISHED | wc -l
+        runbook_url: "https://docs.relay.ai/runbooks/HEALTH_CHECK_FAILED"
+        dashboard_url: "https://grafana/d/post-deployment-health"
+        alert_id: "DEP002"
+
+    - alert: PostDeploymentErrorRateSpike
+      expr: |
+        post_deployment_error_rate{environment="production"} > 0.05
+      for: 2m
+      labels:
+        severity: critical
+        component: post_deployment_health
+        oncall: "yes"
+      annotations:
+        summary: "CRITICAL: Error rate > 5% after deployment"
+        description: |
+          Deployment ID: {{ $labels.deployment_id }}
+          Service: {{ $labels.service }}
+          Error Rate: {{ $value | humanizePercentage }} (threshold: 5%)
+          Environment: {{ $labels.environment }}
+
+          The deployed service is experiencing high error rates.
+
+          Immediate Actions:
+          1. Check error logs for common pattern
+          2. Identify affected endpoints
+          3. Check if issue is in new code or dependency
+          4. If error rate doesn't drop below 1% in 3 minutes, trigger rollback
+
+          Analysis:
+          - Query: SELECT * FROM error_logs WHERE deployment_id='{{ $labels.deployment_id }}' LIMIT 20
+          - Check recent code changes
+          - Verify all dependencies are responding
+
+          If rollback triggered:
+          - Monitor previous version error rate
+          - Post-incident review required
+        runbook_url: "https://docs.relay.ai/runbooks/POST_DEPLOY_ERROR_SPIKE"
+        dashboard_url: "https://grafana/d/deployment-pipeline"
+        alert_id: "DEP003"
+
+    - alert: DatabaseMigrationFailed
+      expr: |
+        increase(migration_failure_total{environment="production"}[5m]) > 0
+      for: 2m
+      labels:
+        severity: critical
+        component: database_migration
+        oncall: "yes"
+      annotations:
+        summary: "CRITICAL: Database migration failed"
+        description: |
+          Deployment ID: {{ $labels.deployment_id }}
+          Environment: {{ $labels.environment }}
+
+          A database migration encountered an error and failed to apply.
+
+          Immediate Actions:
+          1. Check migration error message from logs
+          2. Verify database state (alembic current)
+          3. Identify which migration failed and why
+          4. Determine if automatic rollback was triggered
+
+          Common Causes:
+          - Schema conflict (column already exists)
+          - Migration references non-existent column
+          - Foreign key constraint violation
+          - Table locked by another process
+          - Out of disk space
+
+          Resolution:
+          - If manual rollback needed: alembic downgrade -1
+          - If fixable: Fix migration, re-run: alembic upgrade head
+          - If schema corrupted: Contact DBA
+
+          Prevention:
+          - Test migrations on staging first
+          - Review migration SQL before deployment
+        runbook_url: "https://docs.relay.ai/runbooks/MIGRATION_FAILED"
+        dashboard_url: "https://grafana/d/database-migrations"
+        alert_id: "DEP004"
+
+    - alert: RollbackFailed
+      expr: |
+        increase(deployment_rollback_total{status="failure"}[5m]) > 0
+      for: 1m
+      labels:
+        severity: critical
+        component: deployment_rollback
+        oncall: "yes"
+      annotations:
+        summary: "CRITICAL: Automatic rollback failed"
+        description: |
+          Deployment ID: {{ $labels.deployment_id }}
+          Environment: {{ $labels.environment }}
+          Reason: {{ $labels.reason }}
+
+          The automatic rollback encountered an error.
+          Manual intervention required immediately.
+
+          Immediate Actions:
+          1. Page infrastructure team lead
+          2. Prepare for manual rollback
+          3. Contact VP Engineering if critical service down
+
+          Manual Rollback Steps:
+          1. Log into Railway dashboard
+          2. Select relay-api service
+          3. Go to Deployments tab
+          4. Find last known-good deployment
+          5. Click "Redeploy"
+          6. Verify health after redeploy
+
+          Critical if:
+          - Error rate > 10%
+          - API completely down
+          - Data loss suspected
+        runbook_url: "https://docs.relay.ai/runbooks/ROLLBACK_FAILED"
+        dashboard_url: "https://grafana/d/deployment-pipeline"
+        alert_id: "DEP005"
+
+    # ========================================
+    # HIGH ALERTS - Alert ops team
+    # ========================================
+
+    - alert: DeploymentTakingTooLong
+      expr: |
+        (time() - deployment_start_time) > 900 and deployment_in_progress{environment="production"} > 0
+      for: 2m
+      labels:
+        severity: high
+        component: deployment_pipeline
+      annotations:
+        summary: "HIGH: Deployment in progress for > 15 minutes"
+        description: |
+          Deployment ID: {{ $labels.deployment_id }}
+          Elapsed: {{ (time() - deployment_start_time) | humanizeDuration }}
+          Branch: {{ $labels.branch }}
+
+          A deployment is taking longer than the 15-minute SLO.
+
+          Actions:
+          1. Check which stage is currently running
+          2. Review logs for hangs or timeouts
+          3. Monitor if it completes within 20 minutes
+          4. If > 20 min, consider manual cancellation
+
+          Common Causes:
+          - Docker build taking too long
+          - Smoke tests hanging
+          - Network timeout
+          - Resource exhaustion
+        runbook_url: "https://docs.relay.ai/runbooks/DEPLOYMENT_TIMEOUT"
+        dashboard_url: "https://grafana/d/deployment-pipeline"
+        alert_id: "DEP006"
+
+    - alert: DatabaseMigrationSlow
+      expr: |
+        deployment_stage_duration_seconds{stage="migration",environment="production"} > 120
+      for: 2m
+      labels:
+        severity: high
+        component: database_migration
+      annotations:
+        summary: "HIGH: Database migration taking > 2 minutes"
+        description: |
+          Deployment ID: {{ $labels.deployment_id }}
+          Duration: {{ $value }}s (threshold: 120s)
+          Environment: {{ $labels.environment }}
+
+          A database migration is taking longer than expected.
+
+          Possible Causes:
+          - Large table migration with transformation
+          - Index creation on large table
+          - Database under heavy load from production traffic
+          - Lock contention on critical tables
+          - Slow disk I/O
+
+          Actions:
+          1. Check database activity: SELECT * FROM pg_stat_activity WHERE state != 'idle'
+          2. Look for blocking locks: SELECT * FROM pg_locks WHERE NOT granted
+          3. If > 5 minutes, consider killing transaction (carefully)
+          4. Monitor CPU and I/O on database server
+
+          Prevention:
+          - Test migrations on prod-like data volume
+          - Schedule large migrations during maintenance window
+          - Use CONCURRENTLY for index creation if possible
+        runbook_url: "https://docs.relay.ai/runbooks/MIGRATION_SLOW"
+        dashboard_url: "https://grafana/d/database-migrations"
+        alert_id: "DEP007"
+
+    - alert: SmokeTestsFailingPostDeploy
+      expr: |
+        increase(smoke_test_failures_total{environment="production"}[5m]) > 5
+      for: 2m
+      labels:
+        severity: high
+        component: smoke_tests
+      annotations:
+        summary: "HIGH: {{ $value }} smoke tests failing after deployment"
+        description: |
+          Deployment ID: {{ $labels.deployment_id }}
+          Environment: {{ $labels.environment }}
+          Failed Tests: {{ $value }} in last 5 minutes
+
+          Smoke tests are failing, indicating deployment may not be ready for production.
+
+          Actions:
+          1. Review failed test names and error messages
+          2. Determine if tests are failing due to deployment or pre-existing issue
+          3. If deployment caused: Trigger rollback
+          4. If pre-existing: Investigate and fix
+          5. Re-run smoke tests to verify resolution
+
+          Common Issues:
+          - API endpoint changed without updating test
+          - Missing environment variable
+          - External service dependency down
+          - Test data not migrated
+          - Timing issue (race condition)
+
+          Debug:
+          - Run locally: bash scripts/ci_smoke_tests.sh
+          - Check test logs: GitHub Actions workflow output
+          - Test manually: curl -v https://api.relay.ai/health
+        runbook_url: "https://docs.relay.ai/runbooks/SMOKE_TESTS_FAILED"
+        dashboard_url: "https://grafana/d/deployment-pipeline"
+        alert_id: "DEP008"
+
+    - alert: DeploymentHealthCheckTimeout
+      expr: |
+        increase(api_health_check_timeouts_total{environment="production"}[5m]) > 3
+      for: 2m
+      labels:
+        severity: high
+        component: deployment_health_check
+      annotations:
+        summary: "HIGH: Multiple health check timeouts"
+        description: |
+          Deployment ID: {{ $labels.deployment_id }}
+          Timeouts: {{ $value }} in last 5 minutes
+          Environment: {{ $labels.environment }}
+
+          Health checks are timing out repeatedly, may indicate slow API.
+
+          Actions:
+          1. Check API latency metrics
+          2. Verify no resource exhaustion (CPU, memory)
+          3. Check database connection pool status
+          4. Monitor if timeouts resolve or escalate
+
+          Thresholds:
+          - 3+ timeouts: Alert HIGH
+          - 5+ timeouts: May auto-trigger rollback
+        runbook_url: "https://docs.relay.ai/runbooks/HEALTH_CHECK_TIMEOUT"
+        dashboard_url: "https://grafana/d/post-deployment-health"
+        alert_id: "DEP009"
+
+    # ========================================
+    # MEDIUM ALERTS - Create ticket
+    # ========================================
+
+    - alert: DeploymentSlightly Behind Schedule
+      expr: |
+        (time() - deployment_start_time) > 600 and deployment_in_progress{environment="production"} > 0
+      for: 1m
+      labels:
+        severity: medium
+        component: deployment_pipeline
+      annotations:
+        summary: "MEDIUM: Deployment in progress for > 10 minutes"
+        description: |
+          Deployment ID: {{ $labels.deployment_id }}
+          Elapsed: {{ (time() - deployment_start_time) | humanizeDuration }}
+          Branch: {{ $labels.branch }}
+
+          Deployment is within acceptable range but worth monitoring.
+          If it exceeds 15 minutes (9m SLO), will escalate to HIGH.
+
+          No immediate action required, but observe for further delays.
+        runbook_url: "https://docs.relay.ai/runbooks/DEPLOYMENT_SLOW"
+        dashboard_url: "https://grafana/d/deployment-pipeline"
+        alert_id: "DEP010"
+
+    - alert: HealthCheckLatencyHigh
+      expr: |
+        api_health_check_latency_ms{environment="production"} > 1000
+      for: 3m
+      labels:
+        severity: medium
+        component: deployment_health_check
+      annotations:
+        summary: "MEDIUM: API health check latency > 1000ms"
+        description: |
+          Deployment ID: {{ $labels.deployment_id }}
+          Latency: {{ $value }}ms (threshold: 1000ms)
+          Environment: {{ $labels.environment }}
+          Status: {{ $labels.status }}
+
+          Health endpoint is responding slowly, may indicate API performance issue.
+
+          Actions:
+          1. Check API latency metrics (p95, p99)
+          2. Monitor application logs
+          3. Check resource utilization
+          4. If trending up, consider horizontal scaling
+
+          This is usually temporary post-deployment as services stabilize.
+        runbook_url: "https://docs.relay.ai/runbooks/HEALTH_CHECK_SLOW"
+        dashboard_url: "https://grafana/d/post-deployment-health"
+        alert_id: "DEP011"
+
+    - alert: DeploymentFrequencyAnomalous
+      expr: |
+        increase(deployment_total[1h]) < 1
+      for: 30m
+      labels:
+        severity: medium
+        component: deployment_monitoring
+      annotations:
+        summary: "MEDIUM: No deployments in last hour (unusual)"
+        description: |
+          Environment: {{ $labels.environment }}
+          Expected: At least 1 deployment per hour during business hours
+          Actual: {{ $value }} deployments
+
+          This may indicate:
+          - CI/CD pipeline issues
+          - No code changes (expected)
+          - Deployment system down
+          - Intentional freeze for maintenance
+
+          Actions:
+          1. Verify CI/CD system is healthy
+          2. Check if there are pending changes to deploy
+          3. If freeze in effect, document in ticket
+        runbook_url: "https://docs.relay.ai/runbooks/NO_RECENT_DEPLOYMENTS"
+        dashboard_url: "https://grafana/d/deployment-pipeline"
+        alert_id: "DEP012"
+
+    # ========================================
+    # INFO ALERTS - Log for analysis
+    # ========================================
+
+    - alert: RollbackExecuted
+      expr: |
+        increase(deployment_rollback_total{status="success"}[1h]) > 0
+      for: 1m
+      labels:
+        severity: info
+        component: deployment_pipeline
+      annotations:
+        summary: "INFO: Deployment rollback executed"
+        description: |
+          Deployment ID: {{ $labels.deployment_id }}
+          Reason: {{ $labels.reason }}
+          Environment: {{ $labels.environment }}
+
+          An automatic rollback was executed (and succeeded).
+
+          Post-Incident Actions:
+          1. Document reason and root cause
+          2. Review if similar issue has occurred before
+          3. Create ticket for follow-up investigation
+          4. Add monitoring/test to prevent recurrence
+          5. Update deployment runbooks if needed
+
+          Rollback Timeline:
+          - Failure detected at T+X minutes
+          - Rollback triggered immediately
+          - Previous version restored
+          - Verification passed
+        runbook_url: "https://docs.relay.ai/runbooks/ROLLBACK_COMPLETED"
+        dashboard_url: "https://grafana/d/deployment-pipeline"
+        alert_id: "DEP013"
+
+  # ========================================
+  # RECORDING RULES - For Dashboard Aggregation
+  # ========================================
+
+  - name: deployment_recording
+    interval: 30s
+    rules:
+
+    - record: deployment:success_rate:5m
+      expr: |
+        count(increase(deployment_total{status="success"}[5m])) by (environment)
+        /
+        count(increase(deployment_total[5m])) by (environment)
+
+    - record: deployment:success_rate:1h
+      expr: |
+        count(increase(deployment_total{status="success"}[1h])) by (environment)
+        /
+        count(increase(deployment_total[1h])) by (environment)
+
+    - record: deployment:success_rate:30d
+      expr: |
+        count(increase(deployment_total{status="success"}[30d])) by (environment)
+        /
+        count(increase(deployment_total[30d])) by (environment)
+
+    - record: deployment:avg_stage_duration:5m
+      expr: |
+        avg(deployment_stage_duration_seconds) by (stage, service, environment)
+
+    - record: deployment:p95_stage_duration:1h
+      expr: |
+        histogram_quantile(0.95, avg(rate(deployment_stage_duration_seconds[1h])) by (stage, le))
+
+    - record: deployment:error_rate:5m
+      expr: |
+        count(increase(deployment_errors_total[5m])) by (environment)
+
+    - record: deployment:error_budget:used_30d
+      expr: |
+        count(increase(deployment_total{status="failure"}[30d])) by (environment)
+        /
+        count(increase(deployment_total[30d])) by (environment)
+
+    - record: deployment:ttd_p50:1h
+      expr: |
+        histogram_quantile(0.50, avg(rate(time_to_deploy_seconds_bucket[1h])) by (le))
+
+    - record: deployment:ttd_p95:1h
+      expr: |
+        histogram_quantile(0.95, avg(rate(time_to_deploy_seconds_bucket[1h])) by (le))
+
+    - record: deployment:ttd_p99:1h
+      expr: |
+        histogram_quantile(0.99, avg(rate(time_to_deploy_seconds_bucket[1h])) by (le))

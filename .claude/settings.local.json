@@ -66,7 +66,14 @@
       "Bash(git rm:*)",
       "Bash(do echo \"=== $dir ===\")",
       "Bash(git mv:*)",
-      "Bash(ln:*)"
+      "Bash(ln:*)",
+      "Bash(export RELAY_ENV=development)",
+      "Bash(npm run build:*)",
+      "Bash(xargs grep:*)",
+      "Bash(docker build:*)",
+      "Bash(git log:*)",
+      "Bash(npm install:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []
