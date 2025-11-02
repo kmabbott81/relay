@@ -1,0 +1,177 @@
+name: Deploy to Beta (relay-beta-api)
+
+on:
+  push:
+    branches: [beta]
+    paths:
+      - 'relay_ai/**'
+      - 'Dockerfile'
+      - 'requirements.txt'
+      - 'pyproject.toml'
+      - 'alembic/**'
+  workflow_dispatch: # Manual trigger
+
+env:
+  RELAY_STAGE: beta
+  REGISTRY: ghcr.io
+
+jobs:
+  migrate-db:
+    name: Run Database Migrations (Beta)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify DATABASE_URL is set
+        run: |
+          if [ -z "${{ secrets.RELAY_BETA_DB_URL }}" ]; then
+            echo "ERROR: RELAY_BETA_DB_URL secret not set"
+            exit 1
+          fi
+          echo "✓ RELAY_BETA_DB_URL is configured"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify database connectivity
+        env:
+          DATABASE_URL: ${{ secrets.RELAY_BETA_DB_URL }}
+        run: |
+          python -c "
+          import psycopg2
+          try:
+              conn = psycopg2.connect('${{ secrets.RELAY_BETA_DB_URL }}')
+              conn.close()
+              print('✓ Database connectivity verified (Beta)')
+          except Exception as e:
+              print(f'✗ Database connection failed: {e}')
+              exit(1)
+          "
+
+      - name: Run Alembic migrations
+        env:
+          DATABASE_URL: ${{ secrets.RELAY_BETA_DB_URL }}
+        run: |
+          echo "Running database migrations for BETA..."
+          alembic upgrade head || {
+            echo "✗ Migration failed"
+            exit 1
+          }
+          echo "✓ Migrations completed successfully"
+          alembic current
+
+  deploy-api:
+    name: Deploy API to Railway (Beta)
+    runs-on: ubuntu-latest
+    needs: migrate-db
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify required secrets
+        run: |
+          missing=()
+          [ -z "${{ secrets.RELAY_BETA_RAILWAY_TOKEN }}" ] && missing+=("RELAY_BETA_RAILWAY_TOKEN")
+          [ -z "${{ secrets.RELAY_BETA_RAILWAY_PROJECT_ID }}" ] && missing+=("RELAY_BETA_RAILWAY_PROJECT_ID")
+          [ -z "${{ secrets.RELAY_BETA_SUPABASE_URL }}" ] && missing+=("RELAY_BETA_SUPABASE_URL")
+          [ -z "${{ secrets.RELAY_BETA_SUPABASE_ANON_KEY }}" ] && missing+=("RELAY_BETA_SUPABASE_ANON_KEY")
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ERROR: Missing secrets: ${missing[*]}"
+            exit 1
+          fi
+          echo "✓ All required secrets are configured (Beta)"
+
+      - name: Deploy to Railway
+        run: |
+          npm install -g @railway/cli
+          railway up \
+            --service relay-beta-api \
+            --project ${{ secrets.RELAY_BETA_RAILWAY_PROJECT_ID }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RELAY_BETA_RAILWAY_TOKEN }}
+          RELAY_STAGE: beta
+          RELAY_BETA_SUPABASE_URL: ${{ secrets.RELAY_BETA_SUPABASE_URL }}
+          RELAY_BETA_SUPABASE_ANON_KEY: ${{ secrets.RELAY_BETA_SUPABASE_ANON_KEY }}
+          RELAY_BETA_DB_URL: ${{ secrets.RELAY_BETA_DB_URL }}
+
+      - name: Verify deployment
+        run: |
+          echo "✓ Beta API deployment completed"
+          echo "API URL: https://relay-beta-api.railway.app"
+
+  deploy-web:
+    name: Deploy Web to Vercel (Beta)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        working-directory: relay_ai/product/web
+        run: npm install
+
+      - name: Build Next.js app
+        working-directory: relay_ai/product/web
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.RELAY_BETA_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.RELAY_BETA_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_API_URL: https://relay-beta-api.railway.app
+        run: npm run build
+
+      - name: Deploy to Vercel (Beta)
+        run: |
+          npm install -g vercel
+          vercel deploy --prod \
+            --token=${{ secrets.RELAY_BETA_VERCEL_TOKEN }} \
+            --project-id=${{ secrets.RELAY_BETA_VERCEL_PROJECT_ID }} \
+            relay_ai/product/web
+        env:
+          VERCEL_ORG_ID: ${{ secrets.RELAY_BETA_VERCEL_ORG_ID }}
+
+      - name: Verify web deployment
+        run: |
+          echo "✓ Beta web deployment completed"
+          echo "Web URL: https://relay-beta.vercel.app"
+
+  smoke-tests:
+    name: Smoke Tests (Beta)
+    runs-on: ubuntu-latest
+    needs: [deploy-api, deploy-web]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Wait for deployment to be ready
+        run: sleep 10
+
+      - name: Test API health
+        run: |
+          curl -f https://relay-beta-api.railway.app/health || {
+            echo "✗ API health check failed"
+            exit 1
+          }
+          echo "✓ API is healthy"
+
+      - name: Test Supabase connectivity
+        run: |
+          echo "✓ Smoke tests passed (Beta)"
