@@ -30,22 +30,14 @@ COPY --from=builder /root/.local /root/.local
 ENV PATH=/root/.local/bin:$PATH
 
 # Copy application code
-COPY src/ ./src/
-COPY dashboards/ ./dashboards/
-COPY templates/ ./templates/
-COPY schemas/ ./schemas/
-COPY policies/ ./policies/
-COPY presets/ ./presets/
-COPY styles/ ./styles/
-COPY config/ ./config/
+COPY relay_ai/ ./relay_ai/
 COPY scripts/ ./scripts/
-COPY static/ ./static/
 COPY pyproject.toml ./
 COPY README.md ./
 COPY LICENSE ./
 
-# Verify static files were copied (fail build if not present)
-RUN ls -la static/ && test -f static/dev/action-runner.html || (echo "ERROR: static files missing!" && exit 1)
+# Create runtime directories if needed
+RUN mkdir -p /app/logs /app/artifacts /app/runs
 
 # Make start script executable
 RUN chmod +x scripts/start-server.sh
@@ -59,9 +51,9 @@ ENV PYTHONUNBUFFERED=1
 # Expose port (Railway will set $PORT at runtime)
 EXPOSE 8000
 
-# Health check using /_stcore/health endpoint
+# Health check using /health endpoint (FastAPI)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-8000}/_stcore/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-8000}/health')" || exit 1
 
 # Run FastAPI via uvicorn
 CMD ["sh", "-c", "scripts/start-server.sh"]
