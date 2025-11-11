@@ -22,12 +22,14 @@ export default function Home() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <button
-                className="bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
-                aria-label="Sign up for free trial"
-              >
-                Sign up free
-              </button>
+              <Link href="/beta">
+                <button
+                  className="bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+                  aria-label="Try beta dashboard"
+                >
+                  Try beta app →
+                </button>
+              </Link>
               <Link href="/security">
                 <button
                   className="border-2 border-brand-600 text-brand-600 hover:bg-brand-50 font-semibold py-3 px-8 rounded-lg transition-colors"
@@ -153,9 +155,11 @@ export default function Home() {
           <p className="text-xl mb-8 text-brand-100">
             Join SMBs that switched from Copilot and kept their data.
           </p>
-          <button className="bg-white text-brand-600 hover:bg-brand-50 font-bold py-3 px-8 rounded-lg transition-colors">
-            Start free trial
-          </button>
+          <Link href="/beta">
+            <button className="bg-white text-brand-600 hover:bg-brand-50 font-bold py-3 px-8 rounded-lg transition-colors">
+              Try beta app free →
+            </button>
+          </Link>
         </div>
       </section>
     </div>

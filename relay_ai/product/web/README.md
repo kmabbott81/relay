@@ -4,7 +4,13 @@ Next.js 14 consumer-facing application for Relay AI.
 
 ## Features
 
-- **Landing page** (`/`) — Hero, features, comparison
+- **Landing page** (`/`) — Hero, features, comparison (with beta app link)
+- **Beta dashboard** (`/beta`) — Live product experience
+  - User authentication (Supabase magic links)
+  - File upload & management
+  - AI-powered semantic search
+  - Usage tracking & quotas
+  - Row-level security per user
 - **Security proof** (`/security`) — Live dashboard, compliance docs
 - **Pricing page** (`/pricing`) — All tier options, FAQ
 - **SecurityBadge component** — Visible security on responses
@@ -48,17 +54,19 @@ npm run test:a11y
 
 ```
 app/
-├── layout.tsx          # Root layout with nav + footer (a11y)
-├── page.tsx            # Landing page (hero + features + comparison)
-├── globals.css         # Tailwind + custom styles
+├── layout.tsx                 # Root layout with nav + footer (a11y)
+├── page.tsx                   # Landing page (hero + features + comparison)
+├── globals.css                # Tailwind + custom styles
+├── beta/
+│   └── page.tsx               # Beta dashboard (auth + file upload + search)
 ├── security/
-│   └── page.tsx        # Security proof page
+│   └── page.tsx               # Security proof page
 └── pricing/
-    └── page.tsx        # Pricing tiers page
+    └── page.tsx               # Pricing tiers page
 
 components/
-├── SecurityBadge.tsx    # Visible security indicators (a11y)
-└── SecurityDashboard.tsx # Activity feed + metrics (a11y)
+├── SecurityBadge.tsx          # Visible security indicators (a11y)
+└── SecurityDashboard.tsx      # Activity feed + metrics (a11y)
 ```
 
 ## Accessibility (a11y)
@@ -106,12 +114,20 @@ vercel deploy
 - **Lighthouse:** 90+
 - **Bundle size:** <100KB (gzipped)
 
-## Next Steps
+## Current Status
 
-1. **Wire API** — Connect to relay-ai/platform/api/mvp.py
-2. **Add auth** — Google OAuth callback
-3. **Dashboard** — User account management
-4. **Upload widget** — Document upload UI
+✅ **Beta dashboard is live and functional** at `/beta`
+- Supabase authentication (magic links) working
+- File upload & indexing API integration ready
+- Semantic search connected to knowledge API
+- Usage tracking per user implemented
+
+## Next Steps (Roadmap)
+
+1. **Google OAuth** — Add Google sign-in as alternative to magic links
+2. **User account management** (`/account`) — Profile, billing, API keys
+3. **Admin dashboard** (`/admin`) — Usage analytics, content moderation
+4. **Mobile responsiveness** — Optimize beta dashboard for mobile
 
 ## Contributing
 
