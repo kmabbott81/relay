@@ -1,7 +1,7 @@
 """Tests for retry logic."""
 
 
-from src.connectors.retry import compute_backoff_ms
+from relay_ai.connectors.retry import compute_backoff_ms
 
 
 def test_compute_backoff_exponential():

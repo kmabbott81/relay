@@ -8,10 +8,10 @@ from collections.abc import Mapping
 from typing import Any, Optional
 from uuid import uuid4
 
-from src.ai.job_store import JobStore, get_job_store
-from src.schemas.ai_plan import PlanResult
-from src.schemas.permissions import RBACRegistry, default_rbac
-from src.telemetry import jobs as job_metrics
+from relay_ai.ai.job_store import JobStore, get_job_store
+from relay_ai.schemas.ai_plan import PlanResult
+from relay_ai.schemas.permissions import RBACRegistry, default_rbac
+from relay_ai.telemetry import jobs as job_metrics
 
 
 class AIOrchestrator:

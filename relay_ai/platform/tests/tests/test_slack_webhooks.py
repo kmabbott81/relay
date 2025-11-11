@@ -6,7 +6,7 @@ Tests for ingest_event() with Slack Events API payloads.
 import json
 from pathlib import Path
 
-from src.connectors.webhooks import ingest_event
+from relay_ai.connectors.webhooks import ingest_event
 
 
 def test_slack_message_event():

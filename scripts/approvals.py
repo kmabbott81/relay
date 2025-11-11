@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.orchestrator.checkpoints import (  # noqa: E402
+from relay_ai.orchestrator.checkpoints import (  # noqa: E402
     add_signature,
     approve_checkpoint,
     get_checkpoint,
@@ -19,7 +19,7 @@ from src.orchestrator.checkpoints import (  # noqa: E402
     list_checkpoints,
     reject_checkpoint,
 )
-from src.security.rbac_check import can_approve  # noqa: E402
+from relay_ai.security.rbac_check import can_approve  # noqa: E402
 
 
 def list_command(tenant: str | None = None) -> int:

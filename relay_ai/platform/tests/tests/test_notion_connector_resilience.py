@@ -11,8 +11,8 @@ import os
 
 import pytest
 
-from src.connectors.http_mock import get_mock_transport, reset_mock_transport
-from src.connectors.notion import NotionConnector
+from relay_ai.connectors.http_mock import get_mock_transport, reset_mock_transport
+from relay_ai.connectors.notion import NotionConnector
 
 # Mark all tests in this module to be skipped if needed
 pytestmark = pytest.mark.skip(reason="MockHTTPTransport URL matching issue - same as Gmail/Slack resilience tests")

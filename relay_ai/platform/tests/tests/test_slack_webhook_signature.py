@@ -7,7 +7,7 @@ import hashlib
 import hmac
 import time
 
-from src.webhooks import verify_slack_signature_headers
+from relay_ai.webhooks import verify_slack_signature_headers
 
 
 def test_valid_signature_accepted():

@@ -13,7 +13,7 @@ import argparse
 import json
 import sys
 
-from src.crypto.keyring import active_key, list_keys, rotate_key
+from relay_ai.crypto.keyring import active_key, list_keys, rotate_key
 
 
 def cmd_list(args):

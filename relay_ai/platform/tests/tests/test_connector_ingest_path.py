@@ -4,12 +4,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.connectors.base import ConnectorResult
-from src.connectors.ingest import (
+from relay_ai.connectors.base import ConnectorResult
+from relay_ai.connectors.ingest import (
     ingest_all_connectors,
     ingest_connector_snapshot,
 )
-from src.graph.index import get_index
+from relay_ai.graph.index import get_index
 
 
 @pytest.fixture

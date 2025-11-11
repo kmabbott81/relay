@@ -3,10 +3,10 @@
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
-from src.connectors.cloud.base import CloudConnector, ConnectorConfig, StagedItem
-from src.connectors.cloud.gdrive import GDriveConnector
-from src.connectors.cloud.onedrive import OneDriveConnector
-from src.connectors.cloud.s3 import S3Connector
+from relay_ai.connectors.cloud.base import CloudConnector, ConnectorConfig, StagedItem
+from relay_ai.connectors.cloud.gdrive import GDriveConnector
+from relay_ai.connectors.cloud.onedrive import OneDriveConnector
+from relay_ai.connectors.cloud.s3 import S3Connector
 
 
 def test_connector_config_defaults():

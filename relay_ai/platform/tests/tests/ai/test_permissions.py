@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.security.permissions import (
+from relay_ai.security.permissions import (
     GLOBAL_ACTION_DENYLIST,
     add_to_denylist,
     can_execute,

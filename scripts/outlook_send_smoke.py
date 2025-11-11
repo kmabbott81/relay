@@ -29,7 +29,7 @@ from typing import Any
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.actions.adapters.microsoft import MicrosoftAdapter  # noqa: E402
+from relay_ai.actions.adapters.microsoft import MicrosoftAdapter  # noqa: E402
 
 
 def check_env_vars() -> tuple[bool, list[str]]:

@@ -4,7 +4,7 @@ import json
 import tempfile
 from pathlib import Path
 
-from src.security.audit import AuditAction, AuditLogger, AuditResult, get_audit_logger
+from relay_ai.security.audit import AuditAction, AuditLogger, AuditResult, get_audit_logger
 
 
 def test_audit_logger_creates_log_file():

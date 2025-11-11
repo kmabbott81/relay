@@ -5,7 +5,7 @@ Covers type checking, defaults, bounds, enums, and error messages.
 """
 
 
-from src.template_registry.schemas import validate
+from relay_ai.template_registry.schemas import validate
 
 
 def test_validate_required_field():

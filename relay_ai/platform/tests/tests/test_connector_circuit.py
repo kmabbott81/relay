@@ -3,7 +3,7 @@
 
 import pytest
 
-from src.connectors.circuit import CircuitBreaker
+from relay_ai.connectors.circuit import CircuitBreaker
 
 
 @pytest.fixture

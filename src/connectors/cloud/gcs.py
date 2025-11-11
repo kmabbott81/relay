@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from src.connectors.cloud.base import CloudConnector, ConnectorConfig, StagedItem
+from relay_ai.connectors.cloud.base import CloudConnector, ConnectorConfig, StagedItem
 
 
 class GCSConnector(CloudConnector):

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from src.compliance.api import export_tenant
+from relay_ai.compliance.api import export_tenant
 
 
 @pytest.fixture

@@ -4,8 +4,8 @@ import json
 import os
 from typing import Any, Optional
 
-from src.security.audit import AuditAction, get_audit_logger
-from src.security.authz import Principal, Role
+from relay_ai.security.audit import AuditAction, get_audit_logger
+from relay_ai.security.authz import Principal, Role
 
 # Feature flag
 FEATURE_HOME = os.getenv("FEATURE_HOME", "true").lower() == "true"

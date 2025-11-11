@@ -4,9 +4,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.nl.executor import execute_plan, resume_plan
-from src.nl.intents import Intent
-from src.nl.planner import ActionStep, Plan
+from relay_ai.nl.executor import execute_plan, resume_plan
+from relay_ai.nl.intents import Intent
+from relay_ai.nl.planner import ActionStep, Plan
 
 
 @pytest.fixture

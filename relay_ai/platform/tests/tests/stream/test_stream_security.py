@@ -11,12 +11,12 @@ import pytest
 from fastapi import HTTPException, status
 
 # Import modules under test
-from src.stream.auth import (
+from relay_ai.stream.auth import (
     generate_anon_session_token,
     verify_supabase_jwt,
 )
-from src.stream.limits import RateLimiter
-from src.stream.models import StreamRequest
+from relay_ai.stream.limits import RateLimiter
+from relay_ai.stream.models import StreamRequest
 
 # =============================================================================
 # TESTS: AUTHENTICATION

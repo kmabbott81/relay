@@ -2,8 +2,8 @@
 
 from datetime import UTC, datetime
 
-from src.queue.backends.memory import MemoryQueue
-from src.queue.persistent_queue import Job, JobStatus
+from relay_ai.queue.backends.memory import MemoryQueue
+from relay_ai.queue.persistent_queue import Job, JobStatus
 
 
 def test_memory_queue_enqueue_dequeue():

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from src.connectors.oauth2 import load_token, needs_refresh, save_token
+from relay_ai.connectors.oauth2 import load_token, needs_refresh, save_token
 
 
 @pytest.fixture

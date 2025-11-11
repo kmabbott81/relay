@@ -13,7 +13,7 @@ try:
 except ImportError:
     JSONSCHEMA_AVAILABLE = False
 
-from src.config import load_policy
+from relay_ai.config import load_policy
 
 
 def load_policy_schema() -> dict[str, Any]:

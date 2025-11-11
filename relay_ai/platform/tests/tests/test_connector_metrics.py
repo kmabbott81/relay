@@ -3,7 +3,7 @@
 
 import pytest
 
-from src.connectors.metrics import health_status, record_call, summarize
+from relay_ai.connectors.metrics import health_status, record_call, summarize
 
 
 @pytest.fixture

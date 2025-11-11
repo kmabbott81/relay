@@ -3,9 +3,9 @@
 import pytest
 from pydantic import ValidationError
 
-from src.ai.orchestrator import AIOrchestrator
-from src.schemas.ai_plan import PlannedAction, PlanResult
-from src.schemas.permissions import (
+from relay_ai.ai.orchestrator import AIOrchestrator
+from relay_ai.schemas.ai_plan import PlannedAction, PlanResult
+from relay_ai.schemas.permissions import (
     PermissionSet,
     UserRoleBinding,
     default_rbac,

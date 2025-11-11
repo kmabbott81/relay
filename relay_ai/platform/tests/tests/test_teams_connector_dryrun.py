@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from src.connectors.teams import TeamsConnector
+from relay_ai.connectors.teams import TeamsConnector
 
 
 @pytest.fixture

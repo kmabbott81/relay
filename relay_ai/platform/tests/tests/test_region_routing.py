@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.deploy.regions import (
+from relay_ai.deploy.regions import (
     RegionConfigError,
     active_regions,
     get_failover_policy,

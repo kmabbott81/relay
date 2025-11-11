@@ -7,8 +7,8 @@ import os
 import sys
 from pathlib import Path
 
-from src.auth.oauth.state import OAuthStateManager
-from src.auth.oauth.tokens import OAuthTokenCache
+from relay_ai.auth.oauth.state import OAuthStateManager
+from relay_ai.auth.oauth.tokens import OAuthTokenCache
 
 # Load environment
 env_file = Path(__file__).parent.parent / ".env.e2e"

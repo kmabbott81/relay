@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from src.connectors.base import Connector, ConnectorResult
+from relay_ai.connectors.base import Connector, ConnectorResult
 
 
 class TestConnector(Connector):

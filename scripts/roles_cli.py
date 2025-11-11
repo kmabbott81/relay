@@ -16,7 +16,7 @@ from uuid import UUID
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.db.connection import close_database, get_connection  # noqa: E402
+from relay_ai.db.connection import close_database, get_connection  # noqa: E402
 
 
 async def add_role(workspace_id: str, user_id: str, role: str):

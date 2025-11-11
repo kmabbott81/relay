@@ -21,9 +21,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import after path modification (ruff: E402)
-from src.connectors.circuit import get_circuit_state  # noqa: E402
-from src.connectors.metrics import get_metrics_path, health_status  # noqa: E402
-from src.connectors.registry import list_enabled_connectors  # noqa: E402
+from relay_ai.connectors.circuit import get_circuit_state  # noqa: E402
+from relay_ai.connectors.metrics import get_metrics_path, health_status  # noqa: E402
+from relay_ai.connectors.registry import list_enabled_connectors  # noqa: E402
 
 
 def check_rbac() -> bool:

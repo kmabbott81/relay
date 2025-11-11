@@ -22,7 +22,7 @@ import sys
 import time
 from http.client import HTTPConnection
 
-from src.deploy.traffic_manager import DeploymentError, TrafficManager
+from relay_ai.deploy.traffic_manager import DeploymentError, TrafficManager
 
 
 def check_region_ready(region: str, port: int = 8086, timeout_s: int = 5) -> bool:

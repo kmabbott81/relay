@@ -7,7 +7,7 @@ import os
 
 import pytest
 
-from src.connectors.slack import SlackConnector
+from relay_ai.connectors.slack import SlackConnector
 
 
 @pytest.fixture

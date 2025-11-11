@@ -3,8 +3,8 @@
 Sprint 54: Test MinimalGate with mocked Redis.
 """
 
-from src.rollout.minimal_gate import MinimalGate
-from src.rollout.policy import gmail_policy
+from relay_ai.rollout.minimal_gate import MinimalGate
+from relay_ai.rollout.policy import gmail_policy
 
 
 class FakeRedis(dict):

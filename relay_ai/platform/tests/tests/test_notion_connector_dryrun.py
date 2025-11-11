@@ -7,7 +7,7 @@ import os
 
 import pytest
 
-from src.connectors.notion import NotionConnector
+from relay_ai.connectors.notion import NotionConnector
 
 
 @pytest.fixture

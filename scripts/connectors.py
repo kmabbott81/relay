@@ -11,14 +11,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.connectors.registry import (  # noqa: E402
+from relay_ai.connectors.registry import (  # noqa: E402
     disable_connector,
     enable_connector,
     list_enabled_connectors,
     load_connector,
     register_connector,
 )
-from src.security.teams import get_team_role  # noqa: E402
+from relay_ai.security.teams import get_team_role  # noqa: E402
 
 
 def check_rbac(user_id: str, tenant_id: str, required_role: str = "Operator") -> bool:

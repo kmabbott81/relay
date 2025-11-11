@@ -3,8 +3,8 @@
 Sprint 54: Demonstrates the three main MIME structures.
 """
 
-from src.actions.adapters.google_mime import MimeBuilder
-from src.validation.attachments import Attachment, InlineImage
+from relay_ai.actions.adapters.google_mime import MimeBuilder
+from relay_ai.validation.attachments import Attachment, InlineImage
 
 
 def generate_samples():

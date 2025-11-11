@@ -21,8 +21,8 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.nl.executor import execute_plan, resume_plan
-from src.nl.planner import make_plan
+from relay_ai.nl.executor import execute_plan, resume_plan
+from relay_ai.nl.planner import make_plan
 
 
 def format_plan_preview(plan) -> str:

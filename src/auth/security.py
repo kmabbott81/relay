@@ -10,7 +10,7 @@ from uuid import UUID
 import argon2
 from fastapi import HTTPException, Request
 
-from src.db.connection import get_connection
+from relay_ai.db.connection import get_connection
 
 # Role to scopes mapping (matches CLI)
 ROLE_SCOPES = {

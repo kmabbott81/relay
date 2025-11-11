@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from src.templates import (
+from relay_ai.templates import (
     InputDef,
     TemplateDef,
     clear_template_cache,

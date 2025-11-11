@@ -7,7 +7,7 @@ Covers encrypted storage with classification labels and access control.
 
 import pytest
 
-from src.storage.secure_io import (
+from relay_ai.storage.secure_io import (
     get_artifact_metadata,
     read_encrypted,
     write_encrypted,

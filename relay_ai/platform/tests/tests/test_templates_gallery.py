@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.templates import (
+from relay_ai.templates import (
     CUSTOM_TEMPLATES_DIR,
     InputDef,
     TemplateDef,

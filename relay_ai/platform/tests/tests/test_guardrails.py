@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.guardrails import (
+from relay_ai.guardrails import (
     check_long_quote,
     check_safety_flags,
     check_safety_flags_blocking,

@@ -5,8 +5,8 @@ Covers label hierarchy, access control, and export policies.
 """
 
 
-from src.classify.labels import can_access, effective_label, parse_labels
-from src.classify.policy import export_allowed, label_for_artifact
+from relay_ai.classify.labels import can_access, effective_label, parse_labels
+from relay_ai.classify.policy import export_allowed, label_for_artifact
 
 
 def test_parse_labels_default():

@@ -17,9 +17,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import after path setup
-from src.graph.actions import RBACDenied, execute_action, list_actions  # noqa: E402
-from src.graph.index import get_index  # noqa: E402
-from src.graph.search import search  # noqa: E402
+from relay_ai.graph.actions import RBACDenied, execute_action, list_actions  # noqa: E402
+from relay_ai.graph.index import get_index  # noqa: E402
+from relay_ai.graph.search import search  # noqa: E402
 
 
 def cmd_search(args):

@@ -9,9 +9,9 @@ import json
 import pytest
 import yaml
 
-from src.orchestrator.graph import DAG, Task
-from src.orchestrator.runner import run_dag
-from src.workflows.adapter import template_adapter
+from relay_ai.orchestrator.graph import DAG, Task
+from relay_ai.orchestrator.runner import run_dag
+from relay_ai.workflows.adapter import template_adapter
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.connectors.cp_cal import (
+from relay_ai.connectors.cp_cal import (
     ENDPOINT_REGISTRY,
     EndpointMap,
     SchemaAdapter,

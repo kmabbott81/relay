@@ -3,7 +3,7 @@
 
 import pytest
 
-from src.templates import TemplateDef, TemplateValidationError, _parse_template, list_templates
+from relay_ai.templates import TemplateDef, TemplateValidationError, _parse_template, list_templates
 
 
 def test_valid_templates_load():

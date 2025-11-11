@@ -7,7 +7,7 @@ import json
 from typing import Optional
 from uuid import UUID
 
-from src.db.connection import get_connection
+from relay_ai.db.connection import get_connection
 
 
 def canonical_json(obj) -> str:

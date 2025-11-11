@@ -8,8 +8,8 @@ import json
 
 import pytest
 
-from src.compliance.api import delete_tenant
-from src.compliance.holds import apply_legal_hold
+from relay_ai.compliance.api import delete_tenant
+from relay_ai.compliance.holds import apply_legal_hold
 
 
 @pytest.fixture

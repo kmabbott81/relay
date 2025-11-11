@@ -12,7 +12,7 @@ import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from src.classify.policy import export_allowed
+from relay_ai.classify.policy import export_allowed
 
 from .holds import is_on_hold
 

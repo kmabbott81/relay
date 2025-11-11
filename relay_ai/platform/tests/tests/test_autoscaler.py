@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 
-from src.scale.autoscaler import (
+from relay_ai.scale.autoscaler import (
     EngineState,
     ScaleDirection,
     make_scale_decision,

@@ -22,7 +22,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.actions.adapters.microsoft import (
+from relay_ai.actions.adapters.microsoft import (
     MicrosoftAdapter,
     OutlookSendParams,
 )

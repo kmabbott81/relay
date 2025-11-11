@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from src.templates import InputDef, TemplateDef, validate_inputs
+from relay_ai.templates import InputDef, TemplateDef, validate_inputs
 
 
 def create_test_template_with_inputs(inputs: list[InputDef]) -> TemplateDef:

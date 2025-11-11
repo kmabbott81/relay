@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from freezegun import freeze_time
 
-from src.auth.oauth.tokens import OAuthTokenCache
+from relay_ai.auth.oauth.tokens import OAuthTokenCache
 
 
 class TestOAuthRefreshLock:

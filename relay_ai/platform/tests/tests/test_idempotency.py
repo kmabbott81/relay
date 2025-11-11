@@ -3,7 +3,7 @@
 import os
 from datetime import UTC, datetime, timedelta
 
-from src.orchestrator.idempotency import already_processed, mark_processed, purge_expired
+from relay_ai.orchestrator.idempotency import already_processed, mark_processed, purge_expired
 
 
 def test_idempotency_not_processed_initially(tmp_path):

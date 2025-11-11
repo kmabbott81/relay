@@ -7,11 +7,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.artifacts import create_run_artifact
-from src.config import load_policy
-from src.judge import judge_drafts
-from src.publish import select_publish_text
-from src.schemas import Draft, Judgment, ScoredDraft
+from relay_ai.artifacts import create_run_artifact
+from relay_ai.config import load_policy
+from relay_ai.judge import judge_drafts
+from relay_ai.publish import select_publish_text
+from relay_ai.schemas import Draft, Judgment, ScoredDraft
 
 
 def test_empty_drafts_list():

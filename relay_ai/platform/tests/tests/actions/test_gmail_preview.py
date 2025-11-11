@@ -8,7 +8,7 @@ import re
 
 import pytest
 
-from src.actions.adapters.google import GoogleAdapter
+from relay_ai.actions.adapters.google import GoogleAdapter
 
 
 class TestGmailPreview:

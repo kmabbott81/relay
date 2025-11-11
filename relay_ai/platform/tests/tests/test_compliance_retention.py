@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from src.compliance.api import enforce_retention
+from relay_ai.compliance.api import enforce_retention
 
 
 @pytest.fixture

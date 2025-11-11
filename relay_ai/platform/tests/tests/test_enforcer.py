@@ -4,7 +4,7 @@ import json
 import os
 from datetime import UTC, datetime
 
-from src.cost.enforcer import (
+from relay_ai.cost.enforcer import (
     emit_governance_event,
     should_deny,
     should_throttle,

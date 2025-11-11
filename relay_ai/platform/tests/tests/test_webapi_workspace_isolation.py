@@ -17,7 +17,7 @@ import pytest
 from fastapi import Request
 from fastapi.testclient import TestClient
 
-from src.webapi import app
+from relay_ai.webapi import app
 
 
 @pytest.fixture

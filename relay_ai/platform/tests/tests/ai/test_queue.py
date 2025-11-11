@@ -6,7 +6,7 @@ Sprint 55 Week 3: Test job queuing, dequeuing, and idempotency.
 import json
 from unittest.mock import patch
 
-from src.queue.simple_queue import SimpleQueue
+from relay_ai.queue.simple_queue import SimpleQueue
 
 
 class TestSimpleQueueEnqueue:

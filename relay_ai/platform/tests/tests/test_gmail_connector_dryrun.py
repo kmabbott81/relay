@@ -7,7 +7,7 @@ import os
 
 import pytest
 
-from src.connectors.gmail import GmailConnector
+from relay_ai.connectors.gmail import GmailConnector
 
 
 @pytest.fixture

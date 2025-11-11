@@ -23,16 +23,16 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 # pylint: disable=wrong-import-position
-from src.orchestrator.graph import DAG, Task  # noqa: E402
-from src.orchestrator.idempotency import already_processed, mark_processed  # noqa: E402
-from src.orchestrator.runner import run_dag  # noqa: E402
-from src.orchestrator.state_store import record_event  # noqa: E402
-from src.queue.backends.memory import MemoryQueue  # noqa: E402
-from src.queue.backoff import compute_delay  # noqa: E402
-from src.queue.dlq import append_to_dlq  # noqa: E402
-from src.queue.persistent_queue import Job, JobStatus, PersistentQueue  # noqa: E402
-from src.queue.ratelimit import get_rate_limiter  # noqa: E402
-from src.telemetry.noop import init_noop_if_enabled  # noqa: E402
+from relay_ai.orchestrator.graph import DAG, Task  # noqa: E402
+from relay_ai.orchestrator.idempotency import already_processed, mark_processed  # noqa: E402
+from relay_ai.orchestrator.runner import run_dag  # noqa: E402
+from relay_ai.orchestrator.state_store import record_event  # noqa: E402
+from relay_ai.queue.backends.memory import MemoryQueue  # noqa: E402
+from relay_ai.queue.backoff import compute_delay  # noqa: E402
+from relay_ai.queue.dlq import append_to_dlq  # noqa: E402
+from relay_ai.queue.persistent_queue import Job, JobStatus, PersistentQueue  # noqa: E402
+from relay_ai.queue.ratelimit import get_rate_limiter  # noqa: E402
+from relay_ai.telemetry.noop import init_noop_if_enabled  # noqa: E402
 
 
 def get_queue_backend() -> PersistentQueue:

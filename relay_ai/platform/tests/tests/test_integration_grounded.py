@@ -5,9 +5,9 @@ import tempfile
 
 import pytest
 
-from src.artifacts import create_run_artifact
-from src.corpus import extract_citations, load_corpus, search_corpus
-from src.redaction import apply_redactions
+from relay_ai.artifacts import create_run_artifact
+from relay_ai.corpus import extract_citations, load_corpus, search_corpus
+from relay_ai.redaction import apply_redactions
 
 
 @pytest.fixture

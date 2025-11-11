@@ -1,7 +1,7 @@
 """Tests for JSONL state store (Sprint 27B)."""
 
 
-from src.orchestrator.state_store import index_by, last_runs, record_event
+from relay_ai.orchestrator.state_store import index_by, last_runs, record_event
 
 
 def test_record_and_read_events(tmp_path):

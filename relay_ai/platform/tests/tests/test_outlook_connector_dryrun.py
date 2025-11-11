@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from src.connectors.outlook_api import OutlookConnector
+from relay_ai.connectors.outlook_api import OutlookConnector
 
 
 @pytest.fixture

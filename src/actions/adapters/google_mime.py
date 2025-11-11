@@ -8,8 +8,8 @@ import secrets
 import time
 from typing import Optional
 
-from src.validation.attachments import Attachment, InlineImage
-from src.validation.html_sanitization import (
+from relay_ai.validation.attachments import Attachment, InlineImage
+from relay_ai.validation.html_sanitization import (
     extract_cids_from_html,
     sanitize_html,
     validate_cid_references,

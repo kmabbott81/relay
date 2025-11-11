@@ -16,7 +16,7 @@ import time
 
 import pytest
 
-from src.storage.lifecycle import (
+from relay_ai.storage.lifecycle import (
     get_last_lifecycle_job,
     get_lifecycle_log_path,
     get_recent_lifecycle_events,
@@ -29,7 +29,7 @@ from src.storage.lifecycle import (
     run_lifecycle_job,
     scan_tier_for_expired,
 )
-from src.storage.tiered_store import (
+from relay_ai.storage.tiered_store import (
     TIER_COLD,
     TIER_HOT,
     TIER_WARM,

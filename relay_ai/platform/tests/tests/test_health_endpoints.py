@@ -7,7 +7,7 @@ from http.client import HTTPConnection
 
 import pytest
 
-from src.ops.health_server import start_health_server
+from relay_ai.ops.health_server import start_health_server
 
 # Sprint 52: Quarantine marker - fixed port 18086 conflicts in CI parallel execution
 pytestmark = pytest.mark.port_conflict

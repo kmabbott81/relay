@@ -4,7 +4,7 @@ Tests for DAG graph validation and topological sorting.
 
 import pytest
 
-from src.orchestrator.graph import DAG, CycleDetectedError, Task, ValidationError, merge_payloads, toposort, validate
+from relay_ai.orchestrator.graph import DAG, CycleDetectedError, Task, ValidationError, merge_payloads, toposort, validate
 
 
 def test_valid_dag_validates():

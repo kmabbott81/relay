@@ -7,7 +7,7 @@ Tests PlannedAction and PlanResult schemas from src.schemas.ai_plan.
 import pytest
 from pydantic import ValidationError
 
-from src.schemas.ai_plan import PlannedAction, PlanResult
+from relay_ai.schemas.ai_plan import PlannedAction, PlanResult
 
 
 class TestPlannedAction:

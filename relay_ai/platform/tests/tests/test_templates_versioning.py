@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from src.templates import InputDef, TemplateDef, create_template_artifact, to_slug
+from relay_ai.templates import InputDef, TemplateDef, create_template_artifact, to_slug
 
 
 def test_template_has_version():

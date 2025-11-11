@@ -12,7 +12,7 @@ from pathlib import Path
 
 import yaml
 
-from src.agents.openai_adapter import create_adapter
+from relay_ai.agents.openai_adapter import create_adapter
 
 
 # Configure logging

@@ -3,7 +3,7 @@
 import threading
 import time
 
-from src.scale.worker_pool import Job, WorkerPool
+from relay_ai.scale.worker_pool import Job, WorkerPool
 
 
 def test_initial_worker_spawn():

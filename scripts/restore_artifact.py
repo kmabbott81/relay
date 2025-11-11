@@ -20,8 +20,8 @@ from typing import Any
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.storage.lifecycle import log_lifecycle_event  # noqa: E402
-from src.storage.tiered_store import (  # noqa: E402
+from relay_ai.storage.lifecycle import log_lifecycle_event  # noqa: E402
+from relay_ai.storage.tiered_store import (  # noqa: E402
     TIER_HOT,
     ArtifactNotFoundError,
     InvalidTenantPathError,

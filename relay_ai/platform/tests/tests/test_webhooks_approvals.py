@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from src.webhooks import app
+from relay_ai.webhooks import app
 
 client = TestClient(app)
 

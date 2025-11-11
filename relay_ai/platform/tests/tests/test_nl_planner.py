@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.nl.planner import make_plan
+from relay_ai.nl.planner import make_plan
 
 
 @pytest.fixture

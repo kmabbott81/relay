@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from src.orchestrator.checkpoints import (
+from relay_ai.orchestrator.checkpoints import (
     approve_checkpoint,
     create_checkpoint,
     expire_pending,
@@ -24,7 +24,7 @@ from src.orchestrator.checkpoints import (
     list_checkpoints,
     reject_checkpoint,
 )
-from src.security.rbac_check import can_approve
+from relay_ai.security.rbac_check import can_approve
 
 
 @pytest.fixture

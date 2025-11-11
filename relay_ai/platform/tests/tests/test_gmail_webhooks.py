@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from src.connectors.webhooks import ingest_event
+from relay_ai.connectors.webhooks import ingest_event
 
 
 @pytest.fixture

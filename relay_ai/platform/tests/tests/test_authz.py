@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.security.authz import (
+from relay_ai.security.authz import (
     Action,
     AuthorizationError,
     Principal,

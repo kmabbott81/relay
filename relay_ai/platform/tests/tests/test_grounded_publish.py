@@ -2,8 +2,8 @@
 
 import pytest
 
-from src.publish import select_publish_text
-from src.schemas import Judgment, ScoredDraft
+from relay_ai.publish import select_publish_text
+from relay_ai.schemas import Judgment, ScoredDraft
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 
 import time
 
-from src.queue.retry import (
+from relay_ai.queue.retry import (
     IdempotencyTracker,
     RetryConfig,
     RetryState,

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from src.templates import InputDef, TemplateDef, check_budget, estimate_template_cost
+from relay_ai.templates import InputDef, TemplateDef, check_budget, estimate_template_cost
 
 
 def create_simple_template(body: str = "Test {{name}}") -> TemplateDef:

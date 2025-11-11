@@ -5,7 +5,7 @@ and other sensitive patterns before storing in job records.
 """
 
 
-from src.ai.orchestrator import _safe_error_str
+from relay_ai.ai.orchestrator import _safe_error_str
 
 
 class TestPIIScrubbing:

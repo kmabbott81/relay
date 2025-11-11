@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from src.connectors.mock_outlook import MockOutlookConnector
+from relay_ai.connectors.mock_outlook import MockOutlookConnector
 
 
 @pytest.fixture

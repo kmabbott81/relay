@@ -6,8 +6,8 @@ Covers AES-256-GCM encryption/decryption with keyring.
 
 import pytest
 
-from src.crypto.envelope import decrypt, encrypt
-from src.crypto.keyring import active_key, get_key, rotate_key
+from relay_ai.crypto.envelope import decrypt, encrypt
+from relay_ai.crypto.keyring import active_key, get_key, rotate_key
 
 
 @pytest.fixture

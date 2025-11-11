@@ -8,8 +8,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.ai.job_store import JobStore
-from src.schemas.job import JobRecord, JobStatus
+from relay_ai.ai.job_store import JobStore
+from relay_ai.schemas.job import JobRecord, JobStatus
 
 
 class TestJobStore:

@@ -4,7 +4,7 @@ Sprint 54: Test store_context() and validate_and_retrieve_context().
 """
 
 
-from src.auth.oauth.state import store_context, validate_and_retrieve_context
+from relay_ai.auth.oauth.state import store_context, validate_and_retrieve_context
 
 
 def test_state_roundtrip_valid():

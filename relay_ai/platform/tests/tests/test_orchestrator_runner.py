@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from src.orchestrator.graph import DAG, Task
-from src.orchestrator.runner import RunnerError, run_dag
+from relay_ai.orchestrator.graph import DAG, Task
+from relay_ai.orchestrator.runner import RunnerError, run_dag
 
 
 def test_dry_run_prints_plan_no_side_effects(capsys):

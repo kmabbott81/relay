@@ -1,7 +1,7 @@
 """Tests for template approvals workflow."""
 
-from src.publish import approve_pending_result, create_pending_approval, reject_pending_result
-from src.schemas import Judgment, ScoredDraft
+from relay_ai.publish import approve_pending_result, create_pending_approval, reject_pending_result
+from relay_ai.schemas import Judgment, ScoredDraft
 
 
 def create_test_judgment() -> Judgment:

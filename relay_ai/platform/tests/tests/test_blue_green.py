@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from src.deploy.traffic_manager import DeploymentError, DeploymentState, TrafficManager
+from relay_ai.deploy.traffic_manager import DeploymentError, DeploymentState, TrafficManager
 
 
 @pytest.fixture

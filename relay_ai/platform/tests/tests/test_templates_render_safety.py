@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from src.templates import InputDef, TemplateDef, TemplateRenderError, render_template, to_slug, to_title
+from relay_ai.templates import InputDef, TemplateDef, TemplateRenderError, render_template, to_slug, to_title
 
 
 def create_test_template(body: str, context: str = "markdown") -> TemplateDef:

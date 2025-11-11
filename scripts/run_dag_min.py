@@ -19,8 +19,8 @@ import yaml
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.orchestrator.graph import DAG, Task  # noqa: E402
-from src.orchestrator.runner import RunnerError, resume_dag, run_dag  # noqa: E402
+from relay_ai.orchestrator.graph import DAG, Task  # noqa: E402
+from relay_ai.orchestrator.runner import RunnerError, resume_dag, run_dag  # noqa: E402
 
 
 def load_dag_from_yaml(path: str) -> DAG:

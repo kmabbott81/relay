@@ -18,7 +18,7 @@ from typing import Any, Optional
 from openai import OpenAI
 from openai import OpenAIError, APITimeoutError, RateLimitError
 
-from src.retries import retry_with_backoff
+from relay_ai.retries import retry_with_backoff
 
 
 # Configure logging

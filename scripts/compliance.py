@@ -21,7 +21,7 @@ from pathlib import Path
 # Add src to path before other imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.compliance import (  # noqa: E402
+from relay_ai.compliance import (  # noqa: E402
     apply_legal_hold,
     current_holds,
     delete_tenant,
@@ -29,7 +29,7 @@ from src.compliance import (  # noqa: E402
     export_tenant,
     release_legal_hold,
 )
-from src.crypto.keyring import list_keys, rotate_key  # noqa: E402
+from relay_ai.crypto.keyring import list_keys, rotate_key  # noqa: E402
 
 
 def cmd_export(args):

@@ -6,7 +6,7 @@ Covers apply/release/list legal holds with JSONL integrity.
 
 import pytest
 
-from src.compliance.holds import (
+from relay_ai.compliance.holds import (
     apply_legal_hold,
     current_holds,
     is_on_hold,

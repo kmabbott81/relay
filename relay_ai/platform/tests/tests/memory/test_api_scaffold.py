@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from src.memory.api import router
+from relay_ai.memory.api import router
 
 # ============================================================================
 # Fixtures

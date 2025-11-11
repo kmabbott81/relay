@@ -9,7 +9,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.crypto.envelope import (
+from relay_ai.crypto.envelope import (
     _compute_aad_digest,
     decrypt_with_aad,
     encrypt_with_aad,

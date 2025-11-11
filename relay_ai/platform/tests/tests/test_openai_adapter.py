@@ -21,7 +21,7 @@ from unittest.mock import Mock, patch
 import pytest
 from openai import APITimeoutError, OpenAIError, RateLimitError
 
-from src.agents.openai_adapter import (
+from relay_ai.agents.openai_adapter import (
     CostTracker,
     MockOpenAIAdapter,
     OpenAIAdapter,

@@ -14,8 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from src.orchestrator.checkpoints import create_checkpoint, expire_pending, list_checkpoints
-from src.orchestrator.state_store import last_runs
+from relay_ai.orchestrator.checkpoints import create_checkpoint, expire_pending, list_checkpoints
+from relay_ai.orchestrator.state_store import last_runs
 
 
 @pytest.fixture

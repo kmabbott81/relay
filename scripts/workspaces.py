@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.security.workspaces import (  # noqa: E402
+from relay_ai.security.workspaces import (  # noqa: E402
     get_workspace_role,
     list_workspace_members,
     upsert_workspace_member,

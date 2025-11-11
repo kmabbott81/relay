@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.graph.index import URGIndex, get_index, load_index
+from relay_ai.graph.index import URGIndex, get_index, load_index
 
 
 @pytest.fixture

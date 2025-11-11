@@ -14,14 +14,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from src.knowledge.api import check_jwt_and_get_user_hash
-from src.knowledge.db.asyncpg_client import (
+from relay_ai.knowledge.api import check_jwt_and_get_user_hash
+from relay_ai.knowledge.db.asyncpg_client import (
     SecurityError,
     assert_current_user,
     with_user_conn,
 )
-from src.knowledge.rate_limit.redis_bucket import get_rate_limit
-from src.memory.rls import hmac_user
+from relay_ai.knowledge.rate_limit.redis_bucket import get_rate_limit
+from relay_ai.memory.rls import hmac_user
 
 # ============================================================================
 # TEST 1: Cross-Tenant Isolation

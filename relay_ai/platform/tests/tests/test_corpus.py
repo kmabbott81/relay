@@ -5,7 +5,7 @@ import tempfile
 
 import pytest
 
-from src.corpus import Citation, CorpusManager, Doc, extract_citations, get_corpus_stats, load_corpus, search_corpus
+from relay_ai.corpus import Citation, CorpusManager, Doc, extract_citations, get_corpus_stats, load_corpus, search_corpus
 
 
 @pytest.fixture

@@ -20,36 +20,36 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from src.workflows.examples.inbox_drive_sweep import (
+from relay_ai.workflows.examples.inbox_drive_sweep import (
     load_config as inbox_load_config,
 )
-from src.workflows.examples.inbox_drive_sweep import (
+from relay_ai.workflows.examples.inbox_drive_sweep import (
     run_workflow as inbox_run_workflow,
 )
-from src.workflows.examples.meeting_transcript_brief import (
+from relay_ai.workflows.examples.meeting_transcript_brief import (
     format_prompt as meeting_format_prompt,
 )
-from src.workflows.examples.meeting_transcript_brief import (
+from relay_ai.workflows.examples.meeting_transcript_brief import (
     generate_sample_transcript,
     write_brief,
 )
-from src.workflows.examples.meeting_transcript_brief import (
+from relay_ai.workflows.examples.meeting_transcript_brief import (
     load_config as meeting_load_config,
 )
-from src.workflows.examples.meeting_transcript_brief import (
+from relay_ai.workflows.examples.meeting_transcript_brief import (
     run_workflow as meeting_run_workflow,
 )
-from src.workflows.examples.weekly_report_pack import (
+from relay_ai.workflows.examples.weekly_report_pack import (
     format_prompt as weekly_format_prompt,
 )
-from src.workflows.examples.weekly_report_pack import (
+from relay_ai.workflows.examples.weekly_report_pack import (
     generate_sample_context,
     write_report,
 )
-from src.workflows.examples.weekly_report_pack import (
+from relay_ai.workflows.examples.weekly_report_pack import (
     load_config as weekly_load_config,
 )
-from src.workflows.examples.weekly_report_pack import (
+from relay_ai.workflows.examples.weekly_report_pack import (
     run_workflow as weekly_run_workflow,
 )
 

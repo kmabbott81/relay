@@ -11,9 +11,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.cost.anomaly import detect_anomalies  # noqa: E402
-from src.cost.budgets import get_tenant_budget, is_over_budget  # noqa: E402
-from src.cost.ledger import load_cost_events, rollup, window_sum  # noqa: E402
+from relay_ai.cost.anomaly import detect_anomalies  # noqa: E402
+from relay_ai.cost.budgets import get_tenant_budget, is_over_budget  # noqa: E402
+from relay_ai.cost.ledger import load_cost_events, rollup, window_sum  # noqa: E402
 
 
 def print_text_report(tenant: str | None = None, days: int = 30):

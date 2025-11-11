@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 
-from src.orchestrator.analytics import (
+from relay_ai.orchestrator.analytics import (
     load_events,
     per_tenant_load,
     summarize_dags,

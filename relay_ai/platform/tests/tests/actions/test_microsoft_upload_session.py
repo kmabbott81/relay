@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.actions.adapters.microsoft import MicrosoftAdapter
+from relay_ai.actions.adapters.microsoft import MicrosoftAdapter
 
 
 class TestMicrosoftUploadSession:

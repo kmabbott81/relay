@@ -14,7 +14,7 @@ Tests cover:
 import json
 from unittest.mock import patch
 
-from src.onboarding.wizard import (
+from relay_ai.onboarding.wizard import (
     OPTIONAL_VARS,
     REQUIRED_VARS,
     OnboardingAudit,

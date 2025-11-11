@@ -27,7 +27,7 @@ from typing import Any
 # Add project root to path (noqa: E402)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.actions.adapters.google import GoogleAdapter  # noqa: E402
+from relay_ai.actions.adapters.google import GoogleAdapter  # noqa: E402
 
 # Test data
 RED_PIXEL_PNG = base64.b64decode(

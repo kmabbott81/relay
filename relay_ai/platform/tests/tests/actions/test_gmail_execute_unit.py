@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from src.actions.adapters.google import GoogleAdapter
+from relay_ai.actions.adapters.google import GoogleAdapter
 
 
 class TestGmailExecuteUnit:

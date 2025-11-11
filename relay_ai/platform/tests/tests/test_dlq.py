@@ -2,7 +2,7 @@
 
 import os
 
-from src.queue.dlq import append_to_dlq, list_dlq, replay_job
+from relay_ai.queue.dlq import append_to_dlq, list_dlq, replay_job
 
 
 def test_dlq_append_and_list(tmp_path):

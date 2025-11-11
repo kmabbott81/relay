@@ -3,7 +3,7 @@
 
 import pytest
 
-from src.prefs import (
+from relay_ai.prefs import (
     PrefsAuthorizationError,
     PrefsValidationError,
     delete_pref,
@@ -13,7 +13,7 @@ from src.prefs import (
     set_pref,
     toggle_favorite_template,
 )
-from src.security.authz import Principal, Role
+from relay_ai.security.authz import Principal, Role
 
 
 def test_set_and_get_pref_same_tenant():

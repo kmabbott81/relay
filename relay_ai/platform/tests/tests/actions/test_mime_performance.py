@@ -7,8 +7,8 @@ import time
 
 import pytest
 
-from src.actions.adapters.google_mime import MimeBuilder
-from src.validation.attachments import Attachment, InlineImage
+from relay_ai.actions.adapters.google_mime import MimeBuilder
+from relay_ai.validation.attachments import Attachment, InlineImage
 
 
 class TestMimePerformance:

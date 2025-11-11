@@ -2,8 +2,8 @@
 
 import pytest
 
-from src.publish import create_sort_key, select_publish_text
-from src.schemas import Draft, Judgment, ScoredDraft
+from relay_ai.publish import create_sort_key, select_publish_text
+from relay_ai.schemas import Draft, Judgment, ScoredDraft
 
 
 def test_byte_exact_publish():

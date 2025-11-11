@@ -6,7 +6,7 @@ import asyncio
 import os
 from pathlib import Path
 
-from src.auth.oauth.tokens import OAuthTokenCache
+from relay_ai.auth.oauth.tokens import OAuthTokenCache
 
 # Load environment
 env_file = Path(__file__).parent.parent / ".env.e2e"

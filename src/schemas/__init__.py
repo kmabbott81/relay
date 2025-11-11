@@ -6,10 +6,10 @@ Contains schemas for:
 """
 
 # AI Orchestration schemas (Sprint 58 Slice 5)
-from src.schemas.ai_plan import ActionPlan, ActionStep, PlannedAction, PlanResult
+from relay_ai.schemas.ai_plan import ActionPlan, ActionStep, PlannedAction, PlanResult
 
 # Debate workflow schemas (legacy)
-from src.schemas.debate import Draft, Judgment, ScoredDraft
+from relay_ai.schemas.debate import Draft, Judgment, ScoredDraft
 
 __all__ = [
     # AI Orchestration

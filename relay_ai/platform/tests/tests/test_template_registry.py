@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from src.template_registry import deprecate, get, list_templates, register
+from relay_ai.template_registry import deprecate, get, list_templates, register
 
 
 @pytest.fixture

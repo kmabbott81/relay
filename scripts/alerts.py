@@ -17,7 +17,7 @@ import requests
 
 # Add parent directory to path for src imports
 sys.path.append(str(Path(__file__).parent.parent))
-from src.metrics import filter_runs_by_date, load_runs, summarize_kpis
+from relay_ai.metrics import filter_runs_by_date, load_runs, summarize_kpis
 
 
 def parse_time_period(period: str) -> int:

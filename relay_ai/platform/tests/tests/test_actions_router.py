@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.graph.actions import (
+from relay_ai.graph.actions import (
     ACTION_REGISTRY,
     ActionError,
     RBACDenied,
@@ -12,7 +12,7 @@ from src.graph.actions import (
     list_actions,
     register_action,
 )
-from src.graph.index import get_index
+from relay_ai.graph.index import get_index
 
 
 @pytest.fixture

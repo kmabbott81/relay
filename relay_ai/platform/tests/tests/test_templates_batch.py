@@ -3,7 +3,7 @@
 import tempfile
 from pathlib import Path
 
-from src.templates import (
+from relay_ai.templates import (
     InputDef,
     TemplateDef,
     estimate_batch_cost,

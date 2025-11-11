@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from typing import Optional
 from uuid import uuid4
 
-from src.schemas.job import JobRecord, JobStatus
+from relay_ai.schemas.job import JobRecord, JobStatus
 
 
 class JobStore:

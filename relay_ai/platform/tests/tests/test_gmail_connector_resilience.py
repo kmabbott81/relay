@@ -11,8 +11,8 @@ import os
 
 import pytest
 
-from src.connectors.gmail import GmailConnector
-from src.connectors.http_mock import get_mock_transport, reset_mock_transport
+from relay_ai.connectors.gmail import GmailConnector
+from relay_ai.connectors.http_mock import get_mock_transport, reset_mock_transport
 
 # Skip all tests in this file pending mock refinement
 pytestmark = pytest.mark.skip(

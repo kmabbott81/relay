@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.redaction import RedactionEngine, RedactionEvent, RedactionMatch, apply_redactions, find_redactions
+from relay_ai.redaction import RedactionEngine, RedactionEvent, RedactionMatch, apply_redactions, find_redactions
 
 
 def test_find_api_keys():

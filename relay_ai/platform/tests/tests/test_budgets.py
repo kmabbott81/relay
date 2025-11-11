@@ -4,7 +4,7 @@ import os
 
 import yaml
 
-from src.cost.budgets import get_global_budget, get_tenant_budget, is_over_budget, is_over_global
+from relay_ai.cost.budgets import get_global_budget, get_tenant_budget, is_over_budget, is_over_global
 
 
 def test_get_global_budget_from_env():

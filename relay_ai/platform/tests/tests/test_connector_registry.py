@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.connectors.registry import (
+from relay_ai.connectors.registry import (
     disable_connector,
     enable_connector,
     get_registry_path,

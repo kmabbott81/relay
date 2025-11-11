@@ -14,8 +14,8 @@ import json
 import sys
 from pathlib import Path
 
-from src.classify.labels import effective_label
-from src.storage.secure_io import get_artifact_metadata
+from relay_ai.classify.labels import effective_label
+from relay_ai.storage.secure_io import get_artifact_metadata
 
 
 def cmd_set_label(args):

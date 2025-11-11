@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import yaml  # noqa: E402
 
-from src.template_registry import deprecate, get, list_templates, register  # noqa: E402
+from relay_ai.template_registry import deprecate, get, list_templates, register  # noqa: E402
 
 
 def cmd_register(args):

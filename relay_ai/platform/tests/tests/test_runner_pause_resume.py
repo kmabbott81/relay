@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pytest
 
-from src.orchestrator.checkpoints import approve_checkpoint, get_checkpoint, list_checkpoints
-from src.orchestrator.graph import DAG, Task
-from src.orchestrator.runner import RunnerError, resume_dag, run_dag
+from relay_ai.orchestrator.checkpoints import approve_checkpoint, get_checkpoint, list_checkpoints
+from relay_ai.orchestrator.graph import DAG, Task
+from relay_ai.orchestrator.runner import RunnerError, resume_dag, run_dag
 
 
 @pytest.fixture

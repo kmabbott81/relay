@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.security.teams import get_team_role, list_team_members, upsert_team_member  # noqa: E402
+from relay_ai.security.teams import get_team_role, list_team_members, upsert_team_member  # noqa: E402
 
 
 def main():

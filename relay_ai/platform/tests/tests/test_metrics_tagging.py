@@ -4,7 +4,7 @@ import json
 import tempfile
 from pathlib import Path
 
-from src.metrics import filter_runs_by_template, load_runs, summarize_template_kpis
+from relay_ai.metrics import filter_runs_by_template, load_runs, summarize_template_kpis
 
 
 def test_load_runs_includes_template_fields():

@@ -9,7 +9,7 @@ import os
 
 import pytest
 
-from src.actions.adapters.google import GoogleAdapter
+from relay_ai.actions.adapters.google import GoogleAdapter
 
 
 @pytest.fixture

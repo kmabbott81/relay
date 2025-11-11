@@ -1,6 +1,6 @@
 """Tests for backoff policy (Sprint 29)."""
 
-from src.queue.backoff import compute_delay
+from relay_ai.queue.backoff import compute_delay
 
 
 def test_backoff_first_attempt():

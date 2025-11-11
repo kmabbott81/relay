@@ -1,7 +1,7 @@
 """Tests for Natural Language Intent Parser."""
 
 
-from src.nl.intents import Intent, parse_intent, validate_intent
+from relay_ai.nl.intents import Intent, parse_intent, validate_intent
 
 
 class TestVerbExtraction:

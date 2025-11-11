@@ -2,8 +2,8 @@
 
 import pytest
 
-from src.graph.index import get_index
-from src.graph.search import search, search_by_source, search_by_type
+from relay_ai.graph.index import get_index
+from relay_ai.graph.search import search, search_by_source, search_by_type
 
 
 @pytest.fixture

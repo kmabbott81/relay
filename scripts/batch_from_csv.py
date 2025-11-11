@@ -9,7 +9,7 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.templates import (
+from relay_ai.templates import (
     estimate_batch_cost,
     list_templates,
     load_csv_for_batch,

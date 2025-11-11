@@ -5,7 +5,7 @@ Sprint 54: Tests for src/validation/attachments.py
 
 import pytest
 
-from src.validation.attachments import (
+from relay_ai.validation.attachments import (
     MAX_ATTACHMENT_SIZE,
     MAX_ATTACHMENTS,
     MAX_INLINE,

@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from scripts.approvals import approve_command, list_command, reject_command
-from src.orchestrator.checkpoints import create_checkpoint
+from relay_ai.orchestrator.checkpoints import create_checkpoint
 
 
 @pytest.fixture

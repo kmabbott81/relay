@@ -8,7 +8,7 @@ import json
 
 import pytest
 
-from src.crypto.keyring import active_key, get_key, list_keys, rotate_key
+from relay_ai.crypto.keyring import active_key, get_key, list_keys, rotate_key
 
 
 @pytest.fixture

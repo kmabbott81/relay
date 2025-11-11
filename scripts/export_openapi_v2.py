@@ -12,7 +12,7 @@ from fastapi.openapi.utils import get_openapi
 # noqa: E402 - Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.knowledge.api import router as knowledge_router  # noqa: E402
+from relay_ai.knowledge.api import router as knowledge_router  # noqa: E402
 
 
 def export_openapi_spec():

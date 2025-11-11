@@ -4,7 +4,7 @@ import json
 import os
 from datetime import UTC, datetime, timedelta
 
-from src.cost.anomaly import compute_baseline, detect_anomalies
+from relay_ai.cost.anomaly import compute_baseline, detect_anomalies
 
 
 def test_compute_baseline_empty():

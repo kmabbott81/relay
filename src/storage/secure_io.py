@@ -9,10 +9,10 @@ import os
 from datetime import UTC, datetime
 from pathlib import Path
 
-from src.classify.labels import can_access
-from src.classify.policy import label_for_artifact
-from src.crypto.envelope import decrypt, encrypt
-from src.crypto.keyring import active_key
+from relay_ai.classify.labels import can_access
+from relay_ai.classify.policy import label_for_artifact
+from relay_ai.crypto.envelope import decrypt, encrypt
+from relay_ai.crypto.keyring import active_key
 
 
 def is_encryption_enabled() -> bool:

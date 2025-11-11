@@ -8,8 +8,8 @@ Pipeline test: Verifying GitHub → djp-workflow → Relay deployment flow.
 
 from typing import Any, Optional
 
-from src.schemas.ai_plan import ActionPlan
-from src.schemas.ai_plan import PlannedAction as ActionStep
+from relay_ai.schemas.ai_plan import ActionPlan
+from relay_ai.schemas.ai_plan import PlannedAction as ActionStep
 
 
 class ActionPlanner:

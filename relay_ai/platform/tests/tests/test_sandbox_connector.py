@@ -3,7 +3,7 @@
 
 import pytest
 
-from src.connectors.sandbox import SandboxConnector
+from relay_ai.connectors.sandbox import SandboxConnector
 
 
 @pytest.fixture

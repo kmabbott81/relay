@@ -3,7 +3,7 @@
 import os
 import time
 
-from src.queue.ratelimit import TokenBucketLimiter
+from relay_ai.queue.ratelimit import TokenBucketLimiter
 
 
 def test_token_bucket_initial_capacity():

@@ -19,7 +19,7 @@ import asyncpg
 import pytest
 
 # Import RLS module
-from src.memory.rls import (
+from relay_ai.memory.rls import (
     MEMORY_TENANT_HMAC_KEY,
     RLSMiddlewareContext,
     clear_rls_session_variable,

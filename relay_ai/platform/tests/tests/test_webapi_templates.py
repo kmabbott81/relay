@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from src.webapi import app
+from relay_ai.webapi import app
 
 client = TestClient(app)
 

@@ -4,7 +4,7 @@ import json
 import os
 from datetime import UTC, datetime, timedelta
 
-from src.cost.ledger import load_cost_events, rollup, window_sum
+from relay_ai.cost.ledger import load_cost_events, rollup, window_sum
 
 
 def test_load_cost_events_empty(tmp_path):

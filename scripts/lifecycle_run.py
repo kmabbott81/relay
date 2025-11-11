@@ -22,13 +22,13 @@ from typing import Any
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.storage.lifecycle import (  # noqa: E402
+from relay_ai.storage.lifecycle import (  # noqa: E402
     get_lifecycle_log_path,
     get_recent_lifecycle_events,
     get_retention_days,
     run_lifecycle_job,
 )
-from src.storage.tiered_store import TIER_COLD, TIER_HOT, TIER_WARM, get_all_tier_stats  # noqa: E402
+from relay_ai.storage.tiered_store import TIER_COLD, TIER_HOT, TIER_WARM, get_all_tier_stats  # noqa: E402
 
 
 def print_summary_table(results: dict[str, Any]) -> None:

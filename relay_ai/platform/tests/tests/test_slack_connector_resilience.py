@@ -8,8 +8,8 @@ import os
 
 import pytest
 
-from src.connectors.http_mock import get_mock_transport, reset_mock_transport
-from src.connectors.slack import SlackConnector
+from relay_ai.connectors.http_mock import get_mock_transport, reset_mock_transport
+from relay_ai.connectors.slack import SlackConnector
 
 
 @pytest.fixture

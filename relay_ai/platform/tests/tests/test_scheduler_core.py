@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.orchestrator.scheduler import drain_queue, parse_cron, tick_once
+from relay_ai.orchestrator.scheduler import drain_queue, parse_cron, tick_once
 
 # Sprint 52: Quarantine marker - scheduler API changed (dedup_cache, queue.dequeue)
 pytestmark = pytest.mark.api_mismatch

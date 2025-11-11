@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.queue_strategy import (
+from relay_ai.queue_strategy import (
     HybridQueueRouter,
     QueueBackend,
     QueueConfig,

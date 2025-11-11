@@ -9,7 +9,7 @@ import json
 import pytest
 import yaml
 
-from src.template_registry.loader import load_and_validate, load_schema, load_template_yaml
+from relay_ai.template_registry.loader import load_and_validate, load_schema, load_template_yaml
 
 
 @pytest.fixture

@@ -19,7 +19,7 @@ from unittest.mock import patch
 import fakeredis
 import pytest
 
-from src.queue.simple_queue import SimpleQueue
+from relay_ai.queue.simple_queue import SimpleQueue
 
 
 @pytest.fixture

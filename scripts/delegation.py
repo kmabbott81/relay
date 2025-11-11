@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.security.delegation import (  # noqa: E402
+from relay_ai.security.delegation import (  # noqa: E402
     grant_delegation,
     list_active_delegations,
     revoke_delegation,

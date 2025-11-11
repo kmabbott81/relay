@@ -7,9 +7,9 @@ import json
 import time
 import uuid
 
-from src.config import get_openai_client_and_limits
-from src.schemas.ai_plan import PlannedAction, PlanResult
-from src.telemetry.prom import record_ai_planner, record_ai_tokens
+from relay_ai.config import get_openai_client_and_limits
+from relay_ai.schemas.ai_plan import PlannedAction, PlanResult
+from relay_ai.telemetry.prom import record_ai_planner, record_ai_tokens
 
 
 def plan_actions(nl_prompt: str) -> tuple[PlanResult, dict]:

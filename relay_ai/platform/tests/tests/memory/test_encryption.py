@@ -13,7 +13,7 @@ import time
 
 import pytest
 
-from src.memory.security import InvalidTag, compute_payload_hash, hmac_user, open_sealed, seal
+from relay_ai.memory.security import InvalidTag, compute_payload_hash, hmac_user, open_sealed, seal
 
 # Set up test encryption key (dev only) - MUST be 44-character base64 (32 bytes)
 # Generated: python -c "import os, base64; print(base64.b64encode(os.urandom(32)).decode())"

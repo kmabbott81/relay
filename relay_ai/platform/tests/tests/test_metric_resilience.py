@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.ai.job_store import JobStore
-from src.ai.orchestrator import AIOrchestrator
-from src.schemas.ai_plan import PlannedAction, PlanResult
-from src.schemas.permissions import EffectivePermissions, RBACRegistry
+from relay_ai.ai.job_store import JobStore
+from relay_ai.ai.orchestrator import AIOrchestrator
+from relay_ai.schemas.ai_plan import PlannedAction, PlanResult
+from relay_ai.schemas.permissions import EffectivePermissions, RBACRegistry
 
 
 @pytest.fixture

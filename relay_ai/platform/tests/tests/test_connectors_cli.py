@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src.connectors.registry import register_connector
+from relay_ai.connectors.registry import register_connector
 
 # Sprint 52: Quarantine marker - CLI argument parsing broken
 pytestmark = pytest.mark.bizlogic_asserts

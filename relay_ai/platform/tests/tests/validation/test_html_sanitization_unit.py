@@ -5,8 +5,8 @@ Sprint 54: Tests for src/validation/html_sanitization.py
 
 import pytest
 
-from src.validation.attachments import InlineImage
-from src.validation.html_sanitization import (
+from relay_ai.validation.attachments import InlineImage
+from relay_ai.validation.html_sanitization import (
     extract_cids_from_html,
     sanitize_css,
     sanitize_html,
