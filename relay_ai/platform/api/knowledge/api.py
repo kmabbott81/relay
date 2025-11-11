@@ -9,8 +9,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, Response, UploadFile
 
-from src.knowledge.rate_limit.redis_bucket import get_rate_limit
-from src.knowledge.schemas import (
+from relay_ai.knowledge.rate_limit.redis_bucket import get_rate_limit
+from relay_ai.knowledge.schemas import (
     FileIndexRequest,
     FileIndexResponse,
     FileListResponse,
@@ -18,15 +18,15 @@ from src.knowledge.schemas import (
     SearchRequest,
     SearchResponse,
 )
-from src.knowledge.suggestions import suggestion_for
-from src.memory.rls import hmac_user
-from src.monitoring.metrics_adapter import (
+from relay_ai.knowledge.suggestions import suggestion_for
+from relay_ai.memory.rls import hmac_user
+from relay_ai.monitoring.metrics_adapter import (
     record_api_error,
     record_file_upload,
     record_index_operation,
     record_vector_search,
 )
-from src.stream.auth import verify_supabase_jwt
+from relay_ai.stream.auth import verify_supabase_jwt
 
 # Initialize router
 router = APIRouter(prefix="/api/v1/knowledge", tags=["Knowledge API"])

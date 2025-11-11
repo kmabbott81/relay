@@ -16,14 +16,14 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request, Response
 
-from src.crypto.envelope import (
+from relay_ai.crypto.envelope import (
     decrypt_with_aad,  # noqa: F401 - Phase 3 test dep
     encrypt_with_aad,  # noqa: F401 - Phase 3 test dep
     get_aad_from_user_hash,
 )
-from src.memory.metrics import get_default_collector
-from src.memory.rls import hmac_user
-from src.memory.schemas import (
+from relay_ai.memory.metrics import get_default_collector
+from relay_ai.memory.rls import hmac_user
+from relay_ai.memory.schemas import (
     EntitiesRequest,
     EntitiesResponse,
     Entity,
@@ -36,7 +36,7 @@ from src.memory.schemas import (
     SummarizeRequest,
     SummarizeResponse,
 )
-from src.stream.auth import verify_supabase_jwt  # Existing JWT verifier
+from relay_ai.stream.auth import verify_supabase_jwt  # Existing JWT verifier
 
 logger = logging.getLogger(__name__)
 

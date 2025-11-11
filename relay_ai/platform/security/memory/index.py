@@ -14,8 +14,8 @@ from typing import Any, Optional
 
 import asyncpg
 
-from src.memory.rls import hmac_user, set_rls_context
-from src.memory.security import seal
+from relay_ai.memory.rls import hmac_user, set_rls_context
+from relay_ai.memory.security import seal
 
 logger = logging.getLogger(__name__)
 
