@@ -97,7 +97,11 @@
       "Bash(while read filename)",
       "Bash(do git cat-file -s $filename)",
       "Bash(gzip:*)",
-      "Bash(git verify-commit:*)"
+      "Bash(git verify-commit:*)",
+      "Bash(if grep -q ^.env$ .gitignore)",
+      "Bash(then echo '✓ .env is properly protected in .gitignore')",
+      "Bash(else echo '⚠ .env NOT in .gitignore - adding now...')",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []
