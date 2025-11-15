@@ -2,7 +2,7 @@
 
 # Import from new validation module
 # Re-export functions from parent config module for backward compatibility
-# Import directly from src.config module (not src.config package)
+# Import directly from relay_ai.config module (not src.config package)
 import importlib.util
 import sys
 from pathlib import Path

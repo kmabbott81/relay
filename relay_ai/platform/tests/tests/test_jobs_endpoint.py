@@ -234,7 +234,12 @@ class TestWorkspaceScopedMetrics:
 
     def test_metrics_have_workspace_labels(self):
         """Verify AI metrics have workspace_id labels defined."""
-        from src.telemetry.prom import ai_job_latency_seconds, ai_jobs_total, ai_queue_depth, security_decisions_total
+        from relay_ai.telemetry.prom import (
+            ai_job_latency_seconds,
+            ai_jobs_total,
+            ai_queue_depth,
+            security_decisions_total,
+        )
 
         # Metrics should be initialized (or None if telemetry disabled)
         if ai_jobs_total is not None:

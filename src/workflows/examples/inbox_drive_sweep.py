@@ -1,19 +1,18 @@
 """Inbox Drive Sweep - Personal workflow for prioritizing tasks from inbox and files.
 
 Usage:
-    python -m src.workflows.examples.inbox_drive_sweep --dry-run
-    python -m src.workflows.examples.inbox_drive_sweep --live
+    python -m relay_ai.workflows.examples.inbox_drive_sweep --dry-run
+    python -m relay_ai.workflows.examples.inbox_drive_sweep --live
 """
 
 import argparse
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import yaml
 
 from relay_ai.agents.openai_adapter import create_adapter
-
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -74,7 +73,13 @@ def generate_sample_data() -> dict:
 
 
 def format_prompt(
-    template: str, item_count: int, inbox_items: str, file_count: int, drive_files: str, user_priorities: str, upcoming_deadlines: str
+    template: str,
+    item_count: int,
+    inbox_items: str,
+    file_count: int,
+    drive_files: str,
+    user_priorities: str,
+    upcoming_deadlines: str,
 ) -> str:
     """
     Format prompt template with variables.
@@ -113,7 +118,7 @@ def write_priorities(output_path: Path, content: str, metadata: dict):
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write(f"# Inbox & Drive Sweep - Task Priorities\n\n")
+        f.write("# Inbox & Drive Sweep - Task Priorities\n\n")
         f.write(f"**Generated:** {datetime.utcnow().isoformat()}Z\n")
         f.write(f"**Workflow:** {metadata['workflow_name']}\n\n")
         f.write("---\n\n")

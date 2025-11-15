@@ -267,7 +267,7 @@ class OAuthTokenCache:
         """Store encrypted tokens in database using upsert (INSERT ... ON CONFLICT UPDATE)."""
         from uuid import UUID
 
-        from src.db.connection import get_connection
+        from relay_ai.db.connection import get_connection
 
         # Convert workspace_id to UUID if string
         workspace_uuid = UUID(workspace_id) if isinstance(workspace_id, str) else workspace_id
@@ -303,7 +303,7 @@ class OAuthTokenCache:
         """Retrieve and decrypt tokens from database."""
         from uuid import UUID
 
-        from src.db.connection import get_connection
+        from relay_ai.db.connection import get_connection
 
         # Convert workspace_id to UUID if string
         workspace_uuid = UUID(workspace_id) if isinstance(workspace_id, str) else workspace_id
@@ -353,7 +353,7 @@ class OAuthTokenCache:
         """Delete tokens from database."""
         from uuid import UUID
 
-        from src.db.connection import get_connection
+        from relay_ai.db.connection import get_connection
 
         # Convert workspace_id to UUID if string
         workspace_uuid = UUID(workspace_id) if isinstance(workspace_id, str) else workspace_id
@@ -462,7 +462,7 @@ class OAuthTokenCache:
             if self.redis_client and self.redis_client.set(lock_key, "1", nx=True, ex=10):
                 # We got the lock, perform refresh
                 try:
-                    from src.telemetry import oauth_events
+                    from relay_ai.telemetry import oauth_events
 
                     oauth_events.labels(provider=provider, event="refresh_start").inc()
 
@@ -471,7 +471,7 @@ class OAuthTokenCache:
                     oauth_events.labels(provider=provider, event="refresh_ok").inc()
                     return refreshed
                 except Exception:
-                    from src.telemetry import oauth_events
+                    from relay_ai.telemetry import oauth_events
 
                     oauth_events.labels(provider=provider, event="refresh_failed").inc()
 
@@ -485,7 +485,7 @@ class OAuthTokenCache:
                         self.redis_client.delete(lock_key)
             else:
                 # Lock held by another request, wait briefly and recheck
-                from src.telemetry import oauth_events
+                from relay_ai.telemetry import oauth_events
 
                 oauth_events.labels(provider=provider, event="refresh_locked").inc()
 

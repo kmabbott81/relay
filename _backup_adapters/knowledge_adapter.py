@@ -19,8 +19,8 @@ if str(REPO_ROOT) not in sys.path:
 # Import Knowledge API router and functions from src/knowledge
 # These are production-proven R2 modules. Do NOT modify.
 try:
-    from src.knowledge.api import router as knowledge_router
-    from src.knowledge.db.asyncpg_client import (
+    from relay_ai.knowledge.api import router as knowledge_router
+    from relay_ai.knowledge.db.asyncpg_client import (
         SecurityError,
         close_pool,
         execute_mutation,

@@ -199,7 +199,7 @@ def run_dag(
 
         # Get workflow function
         try:
-            from src.workflows.adapter import WORKFLOW_MAP
+            from relay_ai.workflows.adapter import WORKFLOW_MAP
 
             workflow_fn = WORKFLOW_MAP.get(task.workflow_ref)
             if not workflow_fn:

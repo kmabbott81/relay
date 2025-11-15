@@ -299,7 +299,7 @@ class TestAADBackwardCompatibility:
 
     def test_existing_encrypt_still_works(self, mock_keyring_key):
         """Test that original encrypt() function still works."""
-        from src.crypto.envelope import encrypt
+        from relay_ai.crypto.envelope import encrypt
 
         plaintext = b"Test data"
         envelope = encrypt(plaintext, mock_keyring_key)
@@ -313,7 +313,7 @@ class TestAADBackwardCompatibility:
 
     def test_existing_decrypt_still_works(self, mock_keyring_key):
         """Test that original decrypt() function still works."""
-        from src.crypto.envelope import decrypt, encrypt
+        from relay_ai.crypto.envelope import decrypt, encrypt
 
         plaintext = b"Test data"
         envelope = encrypt(plaintext, mock_keyring_key)

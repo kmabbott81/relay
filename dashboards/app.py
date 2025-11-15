@@ -25,13 +25,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from dashboards.batch_tab import render_batch_tab  # noqa: E402
 from dashboards.chat_tab import render_chat_tab  # noqa: E402
 from dashboards.home_tab import render_home_tab  # noqa: E402
-from src.config_ui import DEFAULTS, load_config, save_config, to_allowed_models  # noqa: E402
-from src.corpus import load_corpus  # noqa: E402
-from src.ops.health_server import start_health_server  # noqa: E402
-from src.publish import select_publish_text  # noqa: E402
-from src.schemas import Draft, Judgment  # noqa: E402
-from src.secrets import detect_providers, load_dotenv_if_present, pricing_for  # noqa: E402
-from src.telemetry.noop import init_noop_if_enabled  # noqa: E402
+from relay_ai.config_ui import DEFAULTS, load_config, save_config, to_allowed_models  # noqa: E402
+from relay_ai.corpus import load_corpus  # noqa: E402
+from relay_ai.ops.health_server import start_health_server  # noqa: E402
+from relay_ai.publish import select_publish_text  # noqa: E402
+from relay_ai.schemas import Draft, Judgment  # noqa: E402
+from relay_ai.secrets import detect_providers, load_dotenv_if_present, pricing_for  # noqa: E402
+from relay_ai.telemetry.noop import init_noop_if_enabled  # noqa: E402
 
 # Load .env secrets early
 load_dotenv_if_present()
@@ -156,7 +156,7 @@ async def run_djp_workflow_mock(
     ]
 
     # Mock judgment
-    from src.schemas import ScoredDraft
+    from relay_ai.schemas import ScoredDraft
 
     scored_drafts = [
         ScoredDraft(
@@ -203,8 +203,8 @@ async def run_djp_workflow_real(
     temperature: float,
 ):
     """Run real DJP workflow with agents package, collecting usage metrics."""
-    from src.debate import run_debate
-    from src.judge import judge_drafts
+    from relay_ai.debate import run_debate
+    from relay_ai.judge import judge_drafts
 
     # Load corpus if grounded
     corpus_docs = None
@@ -326,7 +326,7 @@ def main():
     region_info = ""
     if os.getenv("FEATURE_MULTI_REGION", "false").lower() == "true":
         try:
-            from src.deploy.regions import active_regions, get_primary_region
+            from relay_ai.deploy.regions import active_regions, get_primary_region
 
             regions = active_regions()
             primary = get_primary_region()

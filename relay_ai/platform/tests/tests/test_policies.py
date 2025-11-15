@@ -60,8 +60,8 @@ def test_policy_loading():
 
 def test_none_policy_forces_advisory():
     """Test that none.json policy forces advisory_only status."""
-    from src.publish import select_publish_text
-    from src.schemas import Draft, Judgment, ScoredDraft
+    from relay_ai.publish import select_publish_text
+    from relay_ai.schemas import Draft, Judgment, ScoredDraft
 
     # Load none policy
     allowed_models = load_policy("none")

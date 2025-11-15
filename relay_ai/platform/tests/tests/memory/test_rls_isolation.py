@@ -355,8 +355,8 @@ class TestRegressionSuite:
 
     def test_hmac_consistency_across_imports(self):
         """Hash should be consistent when imported in different ways"""
-        from src.memory import rls
-        from src.memory.rls import hmac_user as hmac_import1
+        from relay_ai.memory import rls
+        from relay_ai.memory.rls import hmac_user as hmac_import1
 
         hmac_import2 = rls.hmac_user
 

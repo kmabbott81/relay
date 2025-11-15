@@ -9,7 +9,7 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
-from src.batch import corpus_hash, load_tasks_from_path, run_batch
+from relay_ai.batch import corpus_hash, load_tasks_from_path, run_batch
 
 # Corpus cache: avoid reloading same corpus across tasks
 _CORPUS_CACHE: dict[str, Any] = {}
@@ -22,10 +22,10 @@ async def _run_once(task_text: str, corpus_paths: list[str] | None, cfg: dict[st
     """
     grounded = bool(corpus_paths)
     try:
-        from src.corpus import load_corpus
-        from src.debate import run_debate
-        from src.judge import judge_drafts
-        from src.publish import select_publish_text
+        from relay_ai.corpus import load_corpus
+        from relay_ai.debate import run_debate
+        from relay_ai.judge import judge_drafts
+        from relay_ai.publish import select_publish_text
 
         # Use corpus cache to avoid reloading
         cor_hash = corpus_hash(corpus_paths)
@@ -95,7 +95,7 @@ async def _run_once(task_text: str, corpus_paths: list[str] | None, cfg: dict[st
         }
     except Exception:
         # MOCK fallback
-        from src.publish import select_publish_text
+        from relay_ai.publish import select_publish_text
 
         status, provider, text, reason, redaction = select_publish_text(
             {"text": task_text, "corpus_paths": corpus_paths, "grounded": grounded}

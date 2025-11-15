@@ -24,7 +24,7 @@ def mock_resolve_contacts():
 @pytest.fixture
 def mock_contact():
     """Mock Contact object."""
-    from src.nl.ner_contacts import Contact
+    from relay_ai.nl.ner_contacts import Contact
 
     return Contact(
         name="Alice Smith",
@@ -55,7 +55,7 @@ class TestEmailPlanning:
 
     def test_email_multiple_recipients(self, mock_resolve_contacts):
         """Test email to multiple recipients."""
-        from src.nl.ner_contacts import Contact
+        from relay_ai.nl.ner_contacts import Contact
 
         mock_resolve_contacts.return_value = [
             Contact("Alice", "alice@example.com", "alice_id", "outlook", "c1"),
@@ -212,7 +212,7 @@ class TestSchedulePlanning:
 
     def test_schedule_meeting(self, mock_resolve_contacts):
         """Test schedule meeting."""
-        from src.nl.ner_contacts import Contact
+        from relay_ai.nl.ner_contacts import Contact
 
         mock_resolve_contacts.return_value = [
             Contact("Alice", "alice@example.com", "alice_id", "outlook", "c1"),
@@ -355,7 +355,7 @@ class TestRiskAssessment:
 
     def test_external_email_is_high_risk(self, mock_resolve_contacts):
         """Test external email is high risk."""
-        from src.nl.ner_contacts import Contact
+        from relay_ai.nl.ner_contacts import Contact
 
         # External domain (not in tenant domains)
         mock_resolve_contacts.return_value = [Contact("External", "external@external.com", "ext_id", "outlook", "c1")]

@@ -22,9 +22,9 @@ async def process_job(job_data: dict) -> None:
     Args:
         job_data: Job data from queue
     """
-    from src.actions.runner import run_action
-    from src.queue.simple_queue import SimpleQueue
-    from src.telemetry.prom import ai_job_latency_seconds, ai_jobs_total
+    from relay_ai.actions.runner import run_action
+    from relay_ai.queue.simple_queue import SimpleQueue
+    from relay_ai.telemetry.prom import ai_job_latency_seconds, ai_jobs_total
 
     queue = SimpleQueue()
     job_id = job_data["job_id"]
@@ -77,8 +77,8 @@ async def process_job(job_data: dict) -> None:
 
 async def worker_loop():
     """Main worker loop."""
-    from src.queue.simple_queue import SimpleQueue
-    from src.telemetry.prom import ai_queue_depth
+    from relay_ai.queue.simple_queue import SimpleQueue
+    from relay_ai.telemetry.prom import ai_queue_depth
 
     print("[INFO] AI Orchestrator worker starting...")
     print(f"[INFO] REDIS_URL: {os.getenv('REDIS_URL', 'NOT SET')}")
@@ -120,7 +120,7 @@ async def worker_loop():
 
 if __name__ == "__main__":
     # Initialize telemetry
-    from src.telemetry import init_telemetry
+    from relay_ai.telemetry import init_telemetry
 
     init_telemetry()
     print("[OK] Telemetry initialized")

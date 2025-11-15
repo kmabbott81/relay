@@ -126,7 +126,7 @@ class GoogleAdapter:
             Structured error dict
         """
         # Record structured error metric
-        from src.telemetry.prom import record_structured_error
+        from relay_ai.telemetry.prom import record_structured_error
 
         record_structured_error(provider="google", action="gmail.send", code=error_code, source="gmail.adapter")
 
@@ -336,7 +336,7 @@ class GoogleAdapter:
 
             # Include sanitized HTML for preview
             if validated.html:
-                from src.validation.html_sanitization import sanitize_html
+                from relay_ai.validation.html_sanitization import sanitize_html
 
                 sanitized_html, _ = sanitize_html(validated.html)
                 result["sanitized_html"] = sanitized_html
@@ -376,8 +376,8 @@ class GoogleAdapter:
         # Convert input models to validation types
         import binascii
 
-        from src.actions.adapters.google_mime import MimeBuilder
-        from src.validation.attachments import Attachment, InlineImage
+        from relay_ai.actions.adapters.google_mime import MimeBuilder
+        from relay_ai.validation.attachments import Attachment, InlineImage
 
         attachments_validated = None
         if attachments:
@@ -442,7 +442,7 @@ class GoogleAdapter:
             # Extract sanitization summary if HTML was provided
             sanitization_summary = None
             if html:
-                from src.validation.html_sanitization import sanitize_html
+                from relay_ai.validation.html_sanitization import sanitize_html
 
                 _, changes = sanitize_html(html)
                 if any(count > 0 for count in changes.values()):
@@ -526,7 +526,7 @@ class GoogleAdapter:
         - gmail_5xx: Server error (500-599)
         - validation_error: Invalid parameters
         """
-        from src.telemetry.prom import record_action_error, record_action_execution
+        from relay_ai.telemetry.prom import record_action_error, record_action_execution
 
         start_time = time.perf_counter()
 
@@ -556,7 +556,7 @@ class GoogleAdapter:
         self._check_internal_only_recipients(validated.to, validated.cc, validated.bcc)
 
         # Fetch OAuth tokens (with auto-refresh)
-        from src.auth.oauth.tokens import OAuthTokenCache
+        from relay_ai.auth.oauth.tokens import OAuthTokenCache
 
         token_cache = OAuthTokenCache()
         try:

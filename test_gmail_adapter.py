@@ -7,7 +7,7 @@ import os
 # Set environment variables for testing
 os.environ["PROVIDER_GOOGLE_ENABLED"] = "false"  # Test with flag off first
 
-from src.actions.adapters.google import GoogleAdapter
+from relay_ai.actions.adapters.google import GoogleAdapter
 
 
 def test_list_actions():
@@ -40,7 +40,7 @@ def test_preview():
         "subject": "Test Email",
         "text": "This is a test email body.",
         "cc": ["cc@example.com"],
-        "bcc": ["bcc@example.com"]
+        "bcc": ["bcc@example.com"],
     }
 
     result = adapter.preview("gmail.send", params)
@@ -55,7 +55,9 @@ def test_preview():
     assert "test@example.com" in result["summary"]
     assert "Test Email" in result["summary"]
     assert len(result["digest"]) == 16, f"Expected 16-char digest, got {len(result['digest'])}"
-    assert any("PROVIDER_GOOGLE_ENABLED" in w for w in result["warnings"]), f"Expected PROVIDER_GOOGLE_ENABLED warning, got: {result['warnings']}"
+    assert any(
+        "PROVIDER_GOOGLE_ENABLED" in w for w in result["warnings"]
+    ), f"Expected PROVIDER_GOOGLE_ENABLED warning, got: {result['warnings']}"
 
     print("[OK] preview test PASSED")
 
@@ -65,11 +67,7 @@ def test_preview_validation_error():
     adapter = GoogleAdapter()
 
     # Test invalid email
-    params = {
-        "to": "not-an-email",
-        "subject": "Test",
-        "text": "Body"
-    }
+    params = {"to": "not-an-email", "subject": "Test", "text": "Body"}
 
     try:
         result = adapter.preview("gmail.send", params)
@@ -84,11 +82,7 @@ async def test_execute_disabled():
     """Test execute when provider is disabled."""
     adapter = GoogleAdapter()
 
-    params = {
-        "to": "test@example.com",
-        "subject": "Test",
-        "text": "Body"
-    }
+    params = {"to": "test@example.com", "subject": "Test", "text": "Body"}
 
     try:
         result = await adapter.execute("gmail.send", params, "workspace-123", "user@example.com")

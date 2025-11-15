@@ -32,7 +32,7 @@ class TestMicrosoftLargeAttachmentIntegration:
         - MS_UPLOAD_SESSIONS_ENABLED=true
         - Network access to graph.microsoft.com
         """
-        from src.actions.adapters.microsoft import MicrosoftAdapter
+        from relay_ai.actions.adapters.microsoft import MicrosoftAdapter
 
         adapter = MicrosoftAdapter()
 
@@ -75,7 +75,7 @@ class TestMicrosoftLargeAttachmentIntegration:
     @pytest.mark.anyio
     async def test_send_email_with_multiple_large_attachments(self):
         """Test sending email with multiple large attachments via upload session."""
-        from src.actions.adapters.microsoft import MicrosoftAdapter
+        from relay_ai.actions.adapters.microsoft import MicrosoftAdapter
 
         adapter = MicrosoftAdapter()
 
@@ -121,7 +121,7 @@ class TestMicrosoftLargeAttachmentIntegration:
     @pytest.mark.anyio
     async def test_send_email_with_inline_image_and_large_attachment(self):
         """Test sending email with inline image and large attachment."""
-        from src.actions.adapters.microsoft import MicrosoftAdapter
+        from relay_ai.actions.adapters.microsoft import MicrosoftAdapter
 
         adapter = MicrosoftAdapter()
 

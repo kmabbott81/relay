@@ -53,8 +53,8 @@ def _render_favorites_card(user_id: str, tenant_id: str):
     st.subheader("⭐ Favorite Templates")
 
     try:
-        from src.prefs import get_favorite_templates
-        from src.security.authz import Principal, Role
+        from relay_ai.prefs import get_favorite_templates
+        from relay_ai.security.authz import Principal, Role
 
         # Create principal for current user
         principal = Principal(user_id=user_id, tenant_id=tenant_id, role=Role.VIEWER)

@@ -16,7 +16,7 @@ import pytest
 
 def test_inproc_limiter_allows_within_limit():
     """In-process limiter allows requests within rate limit."""
-    from src.limits.limiter import InProcessRateLimiter
+    from relay_ai.limits.limiter import InProcessRateLimiter
 
     limiter = InProcessRateLimiter(limit_per_min=60)
     current_time = 1000.0
@@ -32,7 +32,7 @@ def test_inproc_limiter_allows_within_limit():
 
 def test_inproc_limiter_refills_tokens_over_time():
     """In-process limiter refills tokens based on time passed."""
-    from src.limits.limiter import InProcessRateLimiter
+    from relay_ai.limits.limiter import InProcessRateLimiter
 
     limiter = InProcessRateLimiter(limit_per_min=60)
     current_time = 1000.0
@@ -69,7 +69,7 @@ def test_inproc_limiter_refills_tokens_over_time():
 
 def test_inproc_limiter_isolates_workspaces():
     """In-process limiter isolates rate limits per workspace."""
-    from src.limits.limiter import InProcessRateLimiter
+    from relay_ai.limits.limiter import InProcessRateLimiter
 
     limiter = InProcessRateLimiter(limit_per_min=60)
     current_time = 1000.0
@@ -94,7 +94,7 @@ def test_inproc_limiter_isolates_workspaces():
 
 def test_redis_limiter_allows_within_limit():
     """Redis limiter allows requests within rate limit."""
-    from src.limits.limiter import RedisRateLimiter
+    from relay_ai.limits.limiter import RedisRateLimiter
 
     mock_redis = MagicMock()
     mock_redis.incr.return_value = 1  # First request in window
@@ -113,7 +113,7 @@ def test_redis_limiter_allows_within_limit():
 
 def test_redis_limiter_blocks_at_limit():
     """Redis limiter blocks requests at rate limit."""
-    from src.limits.limiter import RedisRateLimiter
+    from relay_ai.limits.limiter import RedisRateLimiter
 
     mock_redis = MagicMock()
     mock_redis.incr.return_value = 61  # Exceeded limit of 60
@@ -129,7 +129,7 @@ def test_redis_limiter_blocks_at_limit():
 
 def test_redis_limiter_uses_fixed_window():
     """Redis limiter uses fixed 1-minute windows."""
-    from src.limits.limiter import RedisRateLimiter
+    from relay_ai.limits.limiter import RedisRateLimiter
 
     mock_redis = MagicMock()
     mock_redis.incr.return_value = 1
@@ -157,7 +157,7 @@ def test_redis_limiter_uses_fixed_window():
 
 def test_redis_limiter_fails_open_on_error():
     """Redis limiter fails open (allows request) if Redis is unavailable."""
-    from src.limits.limiter import RedisRateLimiter
+    from relay_ai.limits.limiter import RedisRateLimiter
 
     mock_redis = MagicMock()
     mock_redis.incr.side_effect = Exception("Redis connection failed")
@@ -176,7 +176,7 @@ def test_redis_limiter_fails_open_on_error():
 
 def test_rate_limit_exception_has_correct_headers():
     """RateLimitExceeded exception includes retry headers."""
-    from src.limits.limiter import RateLimitExceeded
+    from relay_ai.limits.limiter import RateLimitExceeded
 
     exc = RateLimitExceeded(retry_after=30, limit=60, remaining=0, reset=2000)
 
@@ -194,7 +194,7 @@ def test_rate_limit_exception_has_correct_headers():
 def test_rate_limiter_respects_env_flags():
     """Rate limiter respects RATE_LIMIT_ENABLED and RATE_LIMIT_EXEC_PER_MIN env vars."""
     with patch.dict("os.environ", {"RATE_LIMIT_ENABLED": "false"}):
-        from src.limits.limiter import RateLimiter
+        from relay_ai.limits.limiter import RateLimiter
 
         limiter = RateLimiter()
         # Should not raise even if called many times
@@ -202,7 +202,7 @@ def test_rate_limiter_respects_env_flags():
             limiter.check_limit("workspace1")  # Should not raise
 
     with patch.dict("os.environ", {"RATE_LIMIT_ENABLED": "true", "RATE_LIMIT_EXEC_PER_MIN": "10"}):
-        from src.limits.limiter import RateLimiter
+        from relay_ai.limits.limiter import RateLimiter
 
         limiter = RateLimiter()
         assert limiter.limit_per_min == 10
@@ -210,7 +210,7 @@ def test_rate_limiter_respects_env_flags():
 
 def test_rate_limiter_check_limit_raises_on_breach():
     """Rate limiter check_limit raises RateLimitExceeded on breach."""
-    from src.limits.limiter import InProcessRateLimiter, RateLimiter, RateLimitExceeded
+    from relay_ai.limits.limiter import InProcessRateLimiter, RateLimiter, RateLimitExceeded
 
     # Patch RateLimiter to use in-process backend with low limit
     with patch.dict("os.environ", {"RATE_LIMIT_ENABLED": "true", "RATE_LIMIT_EXEC_PER_MIN": "2"}):
@@ -234,7 +234,7 @@ def test_rate_limiter_check_limit_raises_on_breach():
 
 def test_rate_limiter_module_imports():
     """Rate limiter module imports successfully."""
-    from src.limits import limiter
+    from relay_ai.limits import limiter
 
     assert hasattr(limiter, "get_rate_limiter")
     assert hasattr(limiter, "RateLimitExceeded")
@@ -245,7 +245,7 @@ def test_rate_limiter_module_imports():
 def test_webapi_rate_limit_handler_exists():
     """webapi defines rate limit exception handler."""
     # Check exception handlers include RateLimitExceeded
-    from src.limits.limiter import RateLimitExceeded
-    from src.webapi import app
+    from relay_ai.limits.limiter import RateLimitExceeded
+    from relay_ai.webapi import app
 
     assert RateLimitExceeded in app.exception_handlers

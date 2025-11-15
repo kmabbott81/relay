@@ -19,7 +19,7 @@ class TestPrometheusInit:
         """Telemetry should be no-op when TELEMETRY_ENABLED=false."""
         monkeypatch.setenv("TELEMETRY_ENABLED", "false")
 
-        from src.telemetry.prom import init_prometheus
+        from relay_ai.telemetry.prom import init_prometheus
 
         # Should not raise, should be no-op
         init_prometheus()
@@ -31,7 +31,7 @@ class TestPrometheusInit:
 
         # Mock ImportError for prometheus_client
         with patch("src.telemetry.prom.Counter", side_effect=ImportError):
-            from src.telemetry.prom import init_prometheus
+            from relay_ai.telemetry.prom import init_prometheus
 
             # Should log warning but not crash
             init_prometheus()
@@ -47,7 +47,7 @@ class TestPrometheusInit:
         except ImportError:
             pytest.skip("prometheus-client not installed")
 
-        from src.telemetry.prom import init_prometheus
+        from relay_ai.telemetry.prom import init_prometheus
 
         init_prometheus()
 
@@ -62,7 +62,7 @@ class TestPrometheusMetrics:
         """HTTP metrics should be no-op when disabled."""
         monkeypatch.setenv("TELEMETRY_ENABLED", "false")
 
-        from src.telemetry.prom import record_http_request
+        from relay_ai.telemetry.prom import record_http_request
 
         # Should not raise
         record_http_request("GET", "/api/test", 200, 0.123)
@@ -76,7 +76,7 @@ class TestPrometheusMetrics:
         except ImportError:
             pytest.skip("prometheus-client not installed")
 
-        from src.telemetry.prom import init_prometheus, record_http_request
+        from relay_ai.telemetry.prom import init_prometheus, record_http_request
 
         init_prometheus()
 
@@ -88,7 +88,7 @@ class TestPrometheusMetrics:
         """Queue metrics should be no-op when disabled."""
         monkeypatch.setenv("TELEMETRY_ENABLED", "false")
 
-        from src.telemetry.prom import record_queue_job
+        from relay_ai.telemetry.prom import record_queue_job
 
         # Should not raise
         record_queue_job("workflow_run", 1.234)
@@ -97,7 +97,7 @@ class TestPrometheusMetrics:
         """Queue depth should be no-op when disabled."""
         monkeypatch.setenv("TELEMETRY_ENABLED", "false")
 
-        from src.telemetry.prom import set_queue_depth
+        from relay_ai.telemetry.prom import set_queue_depth
 
         # Should not raise
         set_queue_depth("batch_runner", 5)
@@ -106,7 +106,7 @@ class TestPrometheusMetrics:
         """External API metrics should be no-op when disabled."""
         monkeypatch.setenv("TELEMETRY_ENABLED", "false")
 
-        from src.telemetry.prom import record_external_api_call
+        from relay_ai.telemetry.prom import record_external_api_call
 
         # Should not raise
         record_external_api_call("outlook", "send_message", 0.789)
@@ -117,7 +117,7 @@ class TestTimerContext:
 
     def test_timer_context_basic(self):
         """Timer context should measure elapsed time."""
-        from src.telemetry.prom import timer_context
+        from relay_ai.telemetry.prom import timer_context
 
         with timer_context("test_op") as timer:
             # Simulate work
@@ -131,7 +131,7 @@ class TestTimerContext:
 
     def test_timer_context_with_exception(self):
         """Timer context should handle exceptions."""
-        from src.telemetry.prom import timer_context
+        from relay_ai.telemetry.prom import timer_context
 
         with pytest.raises(ValueError):
             with timer_context("failing_op") as timer:
@@ -148,7 +148,7 @@ class TestMetricsEndpoint:
         """Metrics endpoint should return empty when disabled."""
         monkeypatch.setenv("TELEMETRY_ENABLED", "false")
 
-        from src.telemetry.prom import generate_metrics_text
+        from relay_ai.telemetry.prom import generate_metrics_text
 
         result = generate_metrics_text()
         assert result == ""
@@ -162,7 +162,7 @@ class TestMetricsEndpoint:
         except ImportError:
             pytest.skip("prometheus-client not installed")
 
-        from src.telemetry.prom import generate_metrics_text, init_prometheus, record_http_request
+        from relay_ai.telemetry.prom import generate_metrics_text, init_prometheus, record_http_request
 
         init_prometheus()
 
@@ -180,7 +180,7 @@ class TestMiddleware:
 
     def test_middleware_normalize_endpoint(self):
         """Middleware should normalize endpoints to avoid cardinality explosion."""
-        from src.telemetry.middleware import TelemetryMiddleware
+        from relay_ai.telemetry.middleware import TelemetryMiddleware
 
         # UUIDs should be replaced
         assert (
@@ -211,8 +211,8 @@ class TestMiddleware:
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
-        from src.telemetry.middleware import TelemetryMiddleware
-        from src.telemetry.prom import init_prometheus
+        from relay_ai.telemetry.middleware import TelemetryMiddleware
+        from relay_ai.telemetry.prom import init_prometheus
 
         init_prometheus()
 
@@ -244,8 +244,8 @@ class TestMiddleware:
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
-        from src.telemetry.middleware import TelemetryMiddleware
-        from src.telemetry.prom import init_prometheus
+        from relay_ai.telemetry.middleware import TelemetryMiddleware
+        from relay_ai.telemetry.prom import init_prometheus
 
         init_prometheus()
 
@@ -271,7 +271,7 @@ class TestTelemetryFactory:
         """Factory should no-op when disabled."""
         monkeypatch.setenv("TELEMETRY_ENABLED", "false")
 
-        from src.telemetry import init_telemetry
+        from relay_ai.telemetry import init_telemetry
 
         # Should not raise
         init_telemetry()
@@ -286,7 +286,7 @@ class TestTelemetryFactory:
         except ImportError:
             pytest.skip("prometheus-client not installed")
 
-        from src.telemetry import init_telemetry
+        from relay_ai.telemetry import init_telemetry
 
         # Should initialize Prometheus
         init_telemetry()
@@ -296,7 +296,7 @@ class TestTelemetryFactory:
         monkeypatch.setenv("TELEMETRY_ENABLED", "true")
         monkeypatch.setenv("TELEMETRY_BACKEND", "noop")
 
-        from src.telemetry import init_telemetry
+        from relay_ai.telemetry import init_telemetry
 
         # Should use noop
         init_telemetry()
@@ -306,7 +306,7 @@ class TestTelemetryFactory:
         monkeypatch.setenv("TELEMETRY_ENABLED", "true")
         monkeypatch.setenv("TELEMETRY_BACKEND", "unknown")
 
-        from src.telemetry import init_telemetry
+        from relay_ai.telemetry import init_telemetry
 
         # Should fall back to noop
         init_telemetry()
@@ -316,7 +316,7 @@ class TestTelemetryFactory:
         monkeypatch.setenv("TELEMETRY_ENABLED", "true")
         monkeypatch.setenv("TELEMETRY_BACKEND", "otel")
 
-        from src.telemetry import init_telemetry
+        from relay_ai.telemetry import init_telemetry
 
         # Should fall back to noop with warning
         init_telemetry()

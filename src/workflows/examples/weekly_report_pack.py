@@ -1,8 +1,8 @@
 """Weekly Report Pack - Professional workflow for generating weekly status reports.
 
 Usage:
-    python -m src.workflows.examples.weekly_report_pack --dry-run
-    python -m src.workflows.examples.weekly_report_pack --live
+    python -m relay_ai.workflows.examples.weekly_report_pack --dry-run
+    python -m relay_ai.workflows.examples.weekly_report_pack --live
 """
 
 import argparse
@@ -13,7 +13,6 @@ from pathlib import Path
 import yaml
 
 from relay_ai.agents.openai_adapter import create_adapter
-
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -93,7 +92,7 @@ def write_report(output_path: Path, content: str, metadata: dict):
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write(f"# Weekly Status Report\n\n")
+        f.write("# Weekly Status Report\n\n")
         f.write(f"**Generated:** {datetime.utcnow().isoformat()}Z\n")
         f.write(f"**Workflow:** {metadata['workflow_name']}\n\n")
         f.write("---\n\n")

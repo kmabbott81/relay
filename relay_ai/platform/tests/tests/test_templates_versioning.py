@@ -8,7 +8,7 @@ from relay_ai.templates import InputDef, TemplateDef, create_template_artifact, 
 
 def test_template_has_version():
     """All templates should have a version field."""
-    from src.templates import list_templates
+    from relay_ai.templates import list_templates
 
     templates = list_templates()
     for tmpl in templates:
@@ -18,7 +18,7 @@ def test_template_has_version():
 
 def test_version_format():
     """Version should be semantic version format."""
-    from src.templates import list_templates
+    from relay_ai.templates import list_templates
 
     templates = list_templates()
     for tmpl in templates:

@@ -42,7 +42,7 @@ class TelemetryMiddleware(BaseHTTPMiddleware):
             Response from downstream handler with observability headers
         """
         # Import here to avoid circular dependencies and support lazy loading
-        from src.telemetry.prom import record_http_request
+        from relay_ai.telemetry.prom import record_http_request
 
         # Sprint 50: Generate request ID for tracing
         request_id = str(uuid4())

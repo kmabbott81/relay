@@ -1,7 +1,7 @@
 """Unit tests for AI Orchestrator schemas - Sprint 58 Slice 5.
 
 Validates Pydantic schemas for AI action planning with strict validation.
-Tests PlannedAction and PlanResult schemas from src.schemas.ai_plan.
+Tests PlannedAction and PlanResult schemas from relay_ai.schemas.ai_plan.
 """
 
 import pytest
@@ -378,7 +378,7 @@ class TestPlanResult:
 
     def test_legacy_aliases(self):
         """Legacy ActionStep and ActionPlan aliases work."""
-        from src.schemas.ai_plan import ActionPlan, ActionStep
+        from relay_ai.schemas.ai_plan import ActionPlan, ActionStep
 
         # ActionStep is alias for PlannedAction
         step = ActionStep(

@@ -58,7 +58,7 @@ def test_rate_limiter_global_limit():
     os.environ["TENANT_QPS_LIMIT"] = "10"
 
     # Create new limiter instance
-    from src.queue.ratelimit import RateLimiter
+    from relay_ai.queue.ratelimit import RateLimiter
 
     limiter = RateLimiter()
 
@@ -75,7 +75,7 @@ def test_rate_limiter_tenant_limit():
     os.environ["GLOBAL_QPS_LIMIT"] = "100"
     os.environ["TENANT_QPS_LIMIT"] = "3"
 
-    from src.queue.ratelimit import RateLimiter
+    from relay_ai.queue.ratelimit import RateLimiter
 
     limiter = RateLimiter()
 
@@ -94,7 +94,7 @@ def test_rate_limiter_refund_on_tenant_limit():
     os.environ["GLOBAL_QPS_LIMIT"] = "100"
     os.environ["TENANT_QPS_LIMIT"] = "2"
 
-    from src.queue.ratelimit import RateLimiter
+    from relay_ai.queue.ratelimit import RateLimiter
 
     limiter = RateLimiter()
 

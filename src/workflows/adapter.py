@@ -25,7 +25,7 @@ def run_template_workflow(template_name: str, version: str | None, params: dict)
     Raises:
         ValueError: If template not found or validation fails
     """
-    from src.template_registry import load_and_validate
+    from relay_ai.template_registry import load_and_validate
 
     # Load and validate
     template_def, resolved_params = load_and_validate(template_name, version, params)

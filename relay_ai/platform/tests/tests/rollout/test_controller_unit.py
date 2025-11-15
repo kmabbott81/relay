@@ -203,7 +203,7 @@ class TestControllerIntegration:
                 "oauth_refresh_failures_15m": 2,  # 2 failures (good)
             }
 
-        from src.rollout.policy import gmail_policy
+        from relay_ai.rollout.policy import gmail_policy
 
         metrics = mock_get_metrics("http://localhost:9090")
         rec = gmail_policy(metrics, current_percent=10)
@@ -225,7 +225,7 @@ class TestControllerIntegration:
                 "oauth_refresh_failures_15m": 2,  # 2 failures (good)
             }
 
-        from src.rollout.policy import gmail_policy
+        from relay_ai.rollout.policy import gmail_policy
 
         metrics = mock_get_metrics("http://localhost:9090")
         rec = gmail_policy(metrics, current_percent=50)
@@ -279,7 +279,7 @@ class TestControllerIntegration:
             "oauth_refresh_failures_15m": 2,
         }
 
-        from src.rollout.policy import gmail_policy
+        from relay_ai.rollout.policy import gmail_policy
 
         rec = gmail_policy(metrics, current_percent=100)
 

@@ -135,7 +135,7 @@ def test_artifact_structure_with_grounding(temp_corpus_dir):
     docs = load_corpus(temp_corpus_dir)
 
     # Import needed for creating mock judgment
-    from src.schemas import Judgment
+    from relay_ai.schemas import Judgment
 
     # Create mock artifact with proper parameters
     artifact = create_run_artifact(
@@ -237,7 +237,7 @@ def test_multiple_redaction_types_integration():
 
 def test_corpus_stats_integration(temp_corpus_dir):
     """Test corpus statistics in workflow context."""
-    from src.corpus import get_corpus_stats
+    from relay_ai.corpus import get_corpus_stats
 
     docs = load_corpus(temp_corpus_dir)
 

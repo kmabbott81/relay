@@ -149,7 +149,7 @@ class SimpleQueue:
 
             # Record telemetry AFTER successful pipeline execution
             if ENABLE_NEW_SCHEMA:
-                from src.telemetry.prom import record_dual_write_attempt
+                from relay_ai.telemetry.prom import record_dual_write_attempt
 
                 record_dual_write_attempt(workspace_id, "succeeded")
 
@@ -167,7 +167,7 @@ class SimpleQueue:
 
             # Record telemetry for failure (nitpick: always observable)
             if ENABLE_NEW_SCHEMA:
-                from src.telemetry.prom import record_dual_write_attempt
+                from relay_ai.telemetry.prom import record_dual_write_attempt
 
                 record_dual_write_attempt(workspace_id, "failed")
 
@@ -237,7 +237,7 @@ class SimpleQueue:
 
         # Record telemetry (Sprint 60 Phase 2.2)
         try:
-            from src.telemetry.prom import record_job_read_path
+            from relay_ai.telemetry.prom import record_job_read_path
 
             record_job_read_path(workspace_id, read_path)
         except Exception as exc:
@@ -495,7 +495,7 @@ class SimpleQueue:
 
         # Record telemetry (Sprint 60 Phase 2.2)
         try:
-            from src.telemetry.prom import record_job_list_read_path, record_job_list_results
+            from relay_ai.telemetry.prom import record_job_list_read_path, record_job_list_results
 
             record_job_list_read_path(workspace_id, read_path)
             record_job_list_results(workspace_id, len(jobs))

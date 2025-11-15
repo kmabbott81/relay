@@ -32,7 +32,7 @@ def _validate_workspace_id(workspace_id: str) -> bool:
 def _record_telemetry(metric: str, workspace_id: str, **labels: str) -> None:
     """Record telemetry with bounded workspace labels (best-effort)."""
     try:
-        from src.telemetry.prom import (
+        from relay_ai.telemetry.prom import (
             backfill_errors_total,
             backfill_migrated_total,
             backfill_scanned_total,
@@ -240,7 +240,7 @@ def backfill_keys(
 
     # Record duration telemetry
     try:
-        from src.telemetry.prom import backfill_duration_seconds
+        from relay_ai.telemetry.prom import backfill_duration_seconds
 
         backfill_duration_seconds.observe(duration)
     except Exception:

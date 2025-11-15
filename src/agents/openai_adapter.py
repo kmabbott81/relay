@@ -15,11 +15,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-from openai import OpenAI
-from openai import OpenAIError, APITimeoutError, RateLimitError
+from openai import APITimeoutError, OpenAI, OpenAIError, RateLimitError
 
 from relay_ai.retries import retry_with_backoff
-
 
 # Configure logging
 logger = logging.getLogger(__name__)

@@ -1,52 +1,53 @@
-# 🚀 Relay AI Beta Launch Checklist
+# Relay AI Beta Launch Checklist
 
-**Status:** Ready for Beta
-**Target:** 10-50 users
-**Timeline:** Launch within 24 hours
+**Date**: 2025-11-02
+**Status**: Ready for deployment - Awaiting 5 GitHub secrets
+**Target**: Deploy to production and invite first beta users
+**Timeline**: ~40 minutes from secret setup to live
 
 ---
 
-## ✅ Quick Launch (Do These NOW)
+## Current Status
 
-### 1️⃣ **Supabase Setup (30 min)**
-```bash
-# Go to supabase.com and create project
-# Then run this SQL in SQL Editor:
-cat scripts/setup_supabase_beta.sql
-```
+✅ **Completed:**
+- Database setup on Railway (PostgreSQL)
+- API deployed on Railway (relay-production-f2a6.up.railway.app)
+- Monitoring setup (Prometheus + Grafana)
+- GitHub Actions CI/CD automation
+- Web app code ready for Vercel
+- All deployment scripts prepared
 
-- [ ] Create Supabase project
-- [ ] Copy credentials to `.env.local`
-- [ ] Run SQL setup script
-- [ ] Enable Email authentication
-- [ ] Create Storage bucket "user-files"
-- [ ] Add your domain to allowed URLs
+⏳ **Pending:**
+- 5 GitHub secrets from user (Vercel + Supabase credentials)
+- Deploy web app to Vercel
+- Invite beta users
 
-### 2️⃣ **Deploy API (15 min)**
-```bash
-# Option A: Railway (Recommended)
-railway login
-railway init
-railway up
+---
 
-# Option B: Fly.io
-fly launch
-fly deploy
+## Phase 1: Get GitHub Secrets (10 minutes) - USER ACTION REQUIRED
 
-# Option C: Local tunnel for testing
-ngrok http 8000
-```
+### What You Need to Do
 
-- [ ] Deploy API to Railway/Fly
-- [ ] Set environment variables
-- [ ] Test health endpoint: `curl https://your-api.railway.app/health`
+Go to these services and retrieve 5 secrets:
 
-### 3️⃣ **Deploy Web App (15 min)**
-```bash
-cd relay_ai/product/web
+1. **Vercel Token**: https://vercel.com/account/tokens
+   - Create token named `relay-github-actions`
+   - Scope: Full account access
+   - Expiration: 90 days
 
-# Install Supabase
-npm install @supabase/supabase-js
+2. **Vercel Project ID**: https://vercel.com/dashboard → Settings → General
+   - Copy "Project ID" field
+
+3. **Vercel Org ID**: https://vercel.com/account/teams
+   - Copy Team ID (or personal account ID)
+
+4. **Supabase URL**: https://supabase.com/dashboard → Settings → API
+   - Copy "Project URL" field (format: https://xxx.supabase.co)
+
+5. **Supabase Anon Key**: https://supabase.com/dashboard → Settings → API
+   - Copy "anon" public key under "Project API keys"
+
+**Reference**: See `GITHUB_SECRETS_SETUP_GUIDE.md` for detailed instructions
 
 # Deploy to Vercel
 vercel --prod

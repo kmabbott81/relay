@@ -18,7 +18,7 @@ class TestTeamsWorkspaces:
         """Test creating team and adding members."""
         monkeypatch.setenv("TEAMS_PATH", str(tmp_path / "teams.jsonl"))
 
-        from src.security.teams import get_team_role, list_team_members, upsert_team_member
+        from relay_ai.security.teams import get_team_role, list_team_members, upsert_team_member
 
         # Create team with first member
         team = upsert_team_member("team-eng", "alice", "Admin", "Engineering")
@@ -44,7 +44,7 @@ class TestTeamsWorkspaces:
         """Test creating workspace under team."""
         monkeypatch.setenv("WORKSPACES_PATH", str(tmp_path / "workspaces.jsonl"))
 
-        from src.security.workspaces import get_workspace_role, upsert_workspace_member
+        from relay_ai.security.workspaces import get_workspace_role, upsert_workspace_member
 
         # Create workspace
         workspace = upsert_workspace_member("ws-project-a", "alice", "Operator", "Project A", "team-eng")
@@ -58,7 +58,7 @@ class TestTeamsWorkspaces:
         """Test role requirement enforcement."""
         monkeypatch.setenv("TEAMS_PATH", str(tmp_path / "teams.jsonl"))
 
-        from src.security.teams import require_team_role, upsert_team_member
+        from relay_ai.security.teams import require_team_role, upsert_team_member
 
         upsert_team_member("team-eng", "alice", "Admin")
         upsert_team_member("team-eng", "bob", "Operator")
@@ -78,7 +78,7 @@ class TestDelegation:
         """Test granting delegation and listing active ones."""
         monkeypatch.setenv("DELEGATIONS_PATH", str(tmp_path / "delegations.jsonl"))
 
-        from src.security.delegation import grant_delegation, list_active_delegations
+        from relay_ai.security.delegation import grant_delegation, list_active_delegations
 
         # Grant delegation
         delegation = grant_delegation("alice", "bob", "team", "team-eng", "Operator", 24, "On-call")
@@ -97,7 +97,7 @@ class TestDelegation:
         """Test delegation expiry checking."""
         monkeypatch.setenv("DELEGATIONS_PATH", str(tmp_path / "delegations.jsonl"))
 
-        from src.security.delegation import grant_delegation, list_active_delegations
+        from relay_ai.security.delegation import grant_delegation, list_active_delegations
 
         # Grant short delegation (1 second)
         grant_delegation("alice", "bob", "team", "team-eng", "Operator", hours=1 / 3600, reason="Test")
@@ -117,8 +117,8 @@ class TestDelegation:
         monkeypatch.setenv("TEAMS_PATH", str(tmp_path / "teams.jsonl"))
         monkeypatch.setenv("DELEGATIONS_PATH", str(tmp_path / "delegations.jsonl"))
 
-        from src.security.delegation import active_role_for, grant_delegation
-        from src.security.teams import upsert_team_member
+        from relay_ai.security.delegation import active_role_for, grant_delegation
+        from relay_ai.security.teams import upsert_team_member
 
         # Bob is normally a Viewer
         upsert_team_member("team-eng", "bob", "Viewer")
@@ -136,7 +136,7 @@ class TestDelegation:
         """Test revoking a delegation."""
         monkeypatch.setenv("DELEGATIONS_PATH", str(tmp_path / "delegations.jsonl"))
 
-        from src.security.delegation import grant_delegation, list_active_delegations, revoke_delegation
+        from relay_ai.security.delegation import grant_delegation, list_active_delegations, revoke_delegation
 
         # Grant and revoke
         delegation = grant_delegation("alice", "bob", "team", "team-eng", "Operator", 24, "Test")
@@ -161,7 +161,7 @@ class TestMultiSignCheckpoints:
         """Test creating checkpoint with multi-sign requirements."""
         monkeypatch.setenv("CHECKPOINTS_PATH", str(tmp_path / "checkpoints.jsonl"))
 
-        from src.orchestrator.checkpoints import create_checkpoint, get_checkpoint
+        from relay_ai.orchestrator.checkpoints import create_checkpoint, get_checkpoint
 
         checkpoint = create_checkpoint(
             checkpoint_id="chk-001",
@@ -187,7 +187,7 @@ class TestMultiSignCheckpoints:
         """Test adding signatures to multi-sign checkpoint."""
         monkeypatch.setenv("CHECKPOINTS_PATH", str(tmp_path / "checkpoints.jsonl"))
 
-        from src.orchestrator.checkpoints import add_signature, create_checkpoint
+        from relay_ai.orchestrator.checkpoints import add_signature, create_checkpoint
 
         # Create checkpoint
         create_checkpoint(
@@ -211,7 +211,7 @@ class TestMultiSignCheckpoints:
         """Test checking if checkpoint has sufficient signatures."""
         monkeypatch.setenv("CHECKPOINTS_PATH", str(tmp_path / "checkpoints.jsonl"))
 
-        from src.orchestrator.checkpoints import add_signature, create_checkpoint, is_satisfied
+        from relay_ai.orchestrator.checkpoints import add_signature, create_checkpoint, is_satisfied
 
         # Create 2-of-3 checkpoint
         create_checkpoint(
@@ -240,7 +240,7 @@ class TestTeamBudgets:
         monkeypatch.setenv("TEAM_BUDGET_DAILY_DEFAULT", "15.0")
         monkeypatch.setenv("TEAM_BUDGET_MONTHLY_DEFAULT", "300.0")
 
-        from src.cost.budgets import get_team_budget
+        from relay_ai.cost.budgets import get_team_budget
 
         budget = get_team_budget("team-eng")
         assert budget["daily"] == 15.0
@@ -250,7 +250,7 @@ class TestTeamBudgets:
         """Test team budget over-limit detection."""
         monkeypatch.setenv("TEAM_BUDGET_DAILY_DEFAULT", "10.0")
 
-        from src.cost.budgets import is_over_team_budget
+        from relay_ai.cost.budgets import is_over_team_budget
 
         # Under budget
         status = is_over_team_budget("team-eng", daily_spend=5.0, monthly_spend=50.0)
@@ -267,7 +267,7 @@ class TestTeamBudgets:
         cost_events_path = tmp_path / "cost_events.jsonl"
         monkeypatch.setenv("COST_EVENTS_PATH", str(cost_events_path))
 
-        from src.cost.ledger import load_cost_events, window_sum
+        from relay_ai.cost.ledger import load_cost_events, window_sum
 
         # Write cost events
         now = datetime.now(UTC)
@@ -314,7 +314,7 @@ class TestTeamRateLimiting:
         monkeypatch.setenv("TEAM_QPS_LIMIT", "2")
         monkeypatch.setenv("TENANT_QPS_LIMIT", "10")
 
-        from src.queue.ratelimit import RateLimiter
+        from relay_ai.queue.ratelimit import RateLimiter
 
         limiter = RateLimiter()
 
@@ -340,9 +340,9 @@ class TestIntegration:
         monkeypatch.setenv("DELEGATIONS_PATH", str(tmp_path / "delegations.jsonl"))
         monkeypatch.setenv("CHECKPOINTS_PATH", str(tmp_path / "checkpoints.jsonl"))
 
-        from src.orchestrator.checkpoints import add_signature, create_checkpoint, is_satisfied
-        from src.security.delegation import active_role_for, grant_delegation
-        from src.security.teams import upsert_team_member
+        from relay_ai.orchestrator.checkpoints import add_signature, create_checkpoint, is_satisfied
+        from relay_ai.security.delegation import active_role_for, grant_delegation
+        from relay_ai.security.teams import upsert_team_member
 
         # 1. Setup team
         upsert_team_member("team-eng", "alice", "Admin")

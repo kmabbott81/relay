@@ -39,7 +39,7 @@ def orchestrator(job_store):
 @pytest.fixture
 def isolated_metrics():
     """Use isolated Prometheus registry for test isolation (no cross-test bleed)."""
-    from src.telemetry import jobs as job_metrics
+    from relay_ai.telemetry import jobs as job_metrics
 
     # Save originals
     orig_jobs_total = job_metrics.relay_jobs_total

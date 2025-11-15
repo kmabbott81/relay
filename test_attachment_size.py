@@ -5,7 +5,7 @@ import os
 import sys
 from pathlib import Path
 
-from src.actions.adapters.google import GoogleAdapter
+from relay_ai.actions.adapters.google import GoogleAdapter
 
 # Load environment
 env_file = Path(__file__).parent / ".env.e2e"

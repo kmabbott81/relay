@@ -275,7 +275,7 @@ Security Notes:
 
     # Validate tenant ID
     try:
-        from src.storage.tiered_store import validate_tenant_id
+        from relay_ai.storage.tiered_store import validate_tenant_id
 
         validate_tenant_id(args.tenant)
     except InvalidTenantPathError as e:

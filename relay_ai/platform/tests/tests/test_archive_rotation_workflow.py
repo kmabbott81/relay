@@ -56,7 +56,7 @@ def fake_clock():
 
 def test_generate_markdown_artifact():
     """Test markdown artifact generation with checksum."""
-    from src.workflows.stress.archive_rotation_demo import generate_markdown_artifact
+    from relay_ai.workflows.stress.archive_rotation_demo import generate_markdown_artifact
 
     artifact_id, content = generate_markdown_artifact(1, "test_tenant", include_checksum=True)
 
@@ -69,7 +69,7 @@ def test_generate_markdown_artifact():
 
 def test_generate_markdown_artifact_without_checksum():
     """Test markdown artifact generation without checksum."""
-    from src.workflows.stress.archive_rotation_demo import generate_markdown_artifact
+    from relay_ai.workflows.stress.archive_rotation_demo import generate_markdown_artifact
 
     artifact_id, content = generate_markdown_artifact(5, "test_tenant", include_checksum=False)
 
@@ -79,7 +79,7 @@ def test_generate_markdown_artifact_without_checksum():
 
 def test_create_artifacts_dry_run(temp_storage, capsys):
     """Test artifact creation in dry-run mode."""
-    from src.workflows.stress.archive_rotation_demo import create_artifacts
+    from relay_ai.workflows.stress.archive_rotation_demo import create_artifacts
 
     created = create_artifacts("test_tenant", count=5, dry_run=True)
 
@@ -90,8 +90,8 @@ def test_create_artifacts_dry_run(temp_storage, capsys):
 
 def test_create_artifacts_live(temp_storage):
     """Test actual artifact creation."""
-    from src.storage.tiered_store import TIER_HOT, list_artifacts
-    from src.workflows.stress.archive_rotation_demo import create_artifacts
+    from relay_ai.storage.tiered_store import TIER_HOT, list_artifacts
+    from relay_ai.workflows.stress.archive_rotation_demo import create_artifacts
 
     created = create_artifacts("test_tenant", count=10, dry_run=False)
 
@@ -108,7 +108,7 @@ def test_create_artifacts_live(temp_storage):
 
 def test_show_tier_counts(temp_storage, capsys):
     """Test tier statistics display."""
-    from src.workflows.stress.archive_rotation_demo import create_artifacts, show_tier_counts
+    from relay_ai.workflows.stress.archive_rotation_demo import create_artifacts, show_tier_counts
 
     # Create some artifacts
     create_artifacts("test_tenant", count=5, dry_run=False)
@@ -126,8 +126,8 @@ def test_show_tier_counts(temp_storage, capsys):
 
 def test_lifecycle_promotion_with_fake_clock(temp_storage, fake_clock):
     """Test lifecycle promotion using fake clock to simulate age."""
-    from src.storage.tiered_store import TIER_HOT, TIER_WARM, list_artifacts
-    from src.workflows.stress.archive_rotation_demo import create_artifacts, demo_lifecycle_promotion
+    from relay_ai.storage.tiered_store import TIER_HOT, TIER_WARM, list_artifacts
+    from relay_ai.workflows.stress.archive_rotation_demo import create_artifacts, demo_lifecycle_promotion
 
     # Create artifacts
     create_artifacts("test_tenant", count=5, dry_run=False)
@@ -154,7 +154,7 @@ def test_lifecycle_promotion_with_fake_clock(temp_storage, fake_clock):
 
 def test_lifecycle_promotion_dry_run(temp_storage, fake_clock, capsys):
     """Test lifecycle promotion dry run."""
-    from src.workflows.stress.archive_rotation_demo import create_artifacts, demo_lifecycle_promotion
+    from relay_ai.workflows.stress.archive_rotation_demo import create_artifacts, demo_lifecycle_promotion
 
     create_artifacts("test_tenant", count=3, dry_run=False)
 
@@ -169,8 +169,8 @@ def test_lifecycle_promotion_dry_run(temp_storage, fake_clock, capsys):
 
 def test_demo_restore(temp_storage):
     """Test artifact restoration from warm to hot."""
-    from src.storage.tiered_store import TIER_HOT, TIER_WARM, list_artifacts
-    from src.workflows.stress.archive_rotation_demo import create_artifacts, demo_lifecycle_promotion, demo_restore
+    from relay_ai.storage.tiered_store import TIER_HOT, TIER_WARM, list_artifacts
+    from relay_ai.workflows.stress.archive_rotation_demo import create_artifacts, demo_lifecycle_promotion, demo_restore
 
     # Create and promote to warm
     create_artifacts("test_tenant", count=3, dry_run=False)
@@ -195,7 +195,7 @@ def test_demo_restore(temp_storage):
 
 def test_demo_restore_dry_run(temp_storage, capsys):
     """Test restore dry run."""
-    from src.workflows.stress.archive_rotation_demo import create_artifacts, demo_lifecycle_promotion, demo_restore
+    from relay_ai.workflows.stress.archive_rotation_demo import create_artifacts, demo_lifecycle_promotion, demo_restore
 
     create_artifacts("test_tenant", count=2, dry_run=False)
     demo_lifecycle_promotion("test_tenant", force_age_days=10, dry_run=False)
@@ -209,7 +209,7 @@ def test_demo_restore_dry_run(temp_storage, capsys):
 
 def test_full_lifecycle_workflow(temp_storage, fake_clock):
     """Test complete end-to-end workflow."""
-    from src.workflows.stress.archive_rotation_demo import (
+    from relay_ai.workflows.stress.archive_rotation_demo import (
         create_artifacts,
         demo_lifecycle_promotion,
         demo_restore,
@@ -255,8 +255,8 @@ def test_full_lifecycle_workflow(temp_storage, fake_clock):
 
 def test_tenant_isolation(temp_storage):
     """Test that tenants are properly isolated."""
-    from src.storage.tiered_store import TIER_HOT, list_artifacts
-    from src.workflows.stress.archive_rotation_demo import create_artifacts
+    from relay_ai.storage.tiered_store import TIER_HOT, list_artifacts
+    from relay_ai.workflows.stress.archive_rotation_demo import create_artifacts
 
     # Create artifacts for two tenants
     create_artifacts("tenant_a", count=5, dry_run=False)
@@ -275,8 +275,8 @@ def test_tenant_isolation(temp_storage):
 
 def test_artifact_metadata(temp_storage):
     """Test artifact metadata is properly stored."""
-    from src.storage.tiered_store import TIER_HOT, read_artifact
-    from src.workflows.stress.archive_rotation_demo import create_artifacts
+    from relay_ai.storage.tiered_store import TIER_HOT, read_artifact
+    from relay_ai.workflows.stress.archive_rotation_demo import create_artifacts
 
     create_artifacts("test_tenant", count=1, dry_run=False)
 
@@ -292,8 +292,8 @@ def test_artifact_metadata(temp_storage):
 
 def test_purge_simulation(temp_storage, fake_clock):
     """Test purge simulation with extreme aging."""
-    from src.storage.tiered_store import TIER_COLD, list_artifacts
-    from src.workflows.stress.archive_rotation_demo import create_artifacts, demo_lifecycle_promotion
+    from relay_ai.storage.tiered_store import TIER_COLD, list_artifacts
+    from relay_ai.workflows.stress.archive_rotation_demo import create_artifacts, demo_lifecycle_promotion
 
     # Create, age, and promote through all tiers
     create_artifacts("test_tenant", count=2, dry_run=False)
@@ -317,8 +317,8 @@ def test_purge_simulation(temp_storage, fake_clock):
 
 def test_lifecycle_events_logged(temp_storage):
     """Test that lifecycle events are logged."""
-    from src.storage.lifecycle import get_recent_lifecycle_events
-    from src.workflows.stress.archive_rotation_demo import create_artifacts
+    from relay_ai.storage.lifecycle import get_recent_lifecycle_events
+    from relay_ai.workflows.stress.archive_rotation_demo import create_artifacts
 
     create_artifacts("test_tenant", count=3, dry_run=False)
 

@@ -71,7 +71,7 @@ def ensure_health_server(health_server_port: int) -> Generator[int, None, None]:
         pass
 
     # Start health server in background
-    from src.ops.health_server import start_health_server
+    from relay_ai.ops.health_server import start_health_server
 
     # Set environment for health server
     os.environ["HEALTH_PORT"] = str(health_server_port)

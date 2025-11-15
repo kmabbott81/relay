@@ -144,7 +144,7 @@ class MicrosoftAdapter:
             Structured error dict
         """
         # Record structured error metric
-        from src.telemetry.prom import record_structured_error
+        from relay_ai.telemetry.prom import record_structured_error
 
         record_structured_error(provider="microsoft", action="outlook.send", code=error_code, source="outlook.adapter")
 
@@ -318,8 +318,8 @@ class MicrosoftAdapter:
         import base64
         import binascii
 
-        from src.actions.adapters.microsoft_graph import should_use_upload_session
-        from src.validation.attachments import Attachment, InlineImage
+        from relay_ai.actions.adapters.microsoft_graph import should_use_upload_session
+        from relay_ai.validation.attachments import Attachment, InlineImage
 
         attachments = None
         if validated.attachments:
@@ -461,7 +461,7 @@ class MicrosoftAdapter:
         """
         import random
 
-        from src.telemetry.prom import record_action_error, record_action_execution
+        from relay_ai.telemetry.prom import record_action_error, record_action_execution
 
         start_time = time.perf_counter()
 
@@ -494,8 +494,8 @@ class MicrosoftAdapter:
         import base64
         import binascii
 
-        from src.actions.adapters.microsoft_graph import should_use_upload_session
-        from src.validation.attachments import Attachment, InlineImage
+        from relay_ai.actions.adapters.microsoft_graph import should_use_upload_session
+        from relay_ai.validation.attachments import Attachment, InlineImage
 
         attachments = None
         if validated.attachments:
@@ -549,7 +549,7 @@ class MicrosoftAdapter:
                 raise ValueError(json.dumps(error)) from e
 
         # Get OAuth tokens with auto-refresh (needed for both paths)
-        from src.auth.oauth.ms_tokens import get_tokens
+        from relay_ai.auth.oauth.ms_tokens import get_tokens
 
         tokens = await get_tokens(workspace_id, actor_id)
         if not tokens:
@@ -592,7 +592,7 @@ class MicrosoftAdapter:
             )
 
         # Build Graph API JSON payload
-        from src.actions.adapters.microsoft_graph import GraphMessageBuilder
+        from relay_ai.actions.adapters.microsoft_graph import GraphMessageBuilder
 
         builder = GraphMessageBuilder()
 
@@ -651,7 +651,7 @@ class MicrosoftAdapter:
 
                     elif response.status_code == 429:
                         # Rate limiting - parse Retry-After header
-                        from src.actions.adapters.microsoft_errors import parse_retry_after
+                        from relay_ai.actions.adapters.microsoft_errors import parse_retry_after
 
                         retry_after = parse_retry_after(response.headers.get("Retry-After"))
 
@@ -666,7 +666,7 @@ class MicrosoftAdapter:
                             continue  # Retry
                         else:
                             # Max retries exceeded
-                            from src.actions.adapters.microsoft_errors import (
+                            from relay_ai.actions.adapters.microsoft_errors import (
                                 map_graph_error_to_structured_code,
                             )
 
@@ -684,7 +684,7 @@ class MicrosoftAdapter:
 
                     else:
                         # Other error (4xx, 5xx)
-                        from src.actions.adapters.microsoft_errors import (
+                        from relay_ai.actions.adapters.microsoft_errors import (
                             map_graph_error_to_structured_code,
                         )
 
@@ -800,7 +800,7 @@ class MicrosoftAdapter:
         Raises:
             ValueError: If upload session fails
         """
-        from src.actions.adapters.microsoft_upload import (
+        from relay_ai.actions.adapters.microsoft_upload import (
             UploadChunkError,
             UploadFinalizeError,
             UploadSessionCreateError,
@@ -810,11 +810,11 @@ class MicrosoftAdapter:
             put_chunks,
             send_draft,
         )
-        from src.telemetry.prom import record_action_error, record_action_execution
+        from relay_ai.telemetry.prom import record_action_error, record_action_execution
 
         try:
             # Step 1: Build message without attachments (draft)
-            from src.actions.adapters.microsoft_graph import GraphMessageBuilder
+            from relay_ai.actions.adapters.microsoft_graph import GraphMessageBuilder
 
             builder = GraphMessageBuilder()
             draft_payload = builder.build_message(

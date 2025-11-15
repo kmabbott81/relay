@@ -39,8 +39,8 @@ def test_render_no_connectors(setup_test_env):
 
 def test_render_with_healthy_connector(setup_test_env):
     """Panel renders healthy connector data."""
-    from src.connectors.metrics import record_call
-    from src.connectors.registry import register_connector
+    from relay_ai.connectors.metrics import record_call
+    from relay_ai.connectors.registry import register_connector
 
     # Register connector
     register_connector("test-conn", "src.connectors.sandbox", "SandboxConnector")
@@ -59,8 +59,8 @@ def test_render_with_healthy_connector(setup_test_env):
 
 def test_render_with_degraded_connector(setup_test_env, monkeypatch):
     """Panel renders degraded connector with warning."""
-    from src.connectors.metrics import record_call
-    from src.connectors.registry import register_connector
+    from relay_ai.connectors.metrics import record_call
+    from relay_ai.connectors.registry import register_connector
 
     monkeypatch.setenv("CONNECTOR_HEALTH_P95_MS", "50")
 
@@ -81,8 +81,8 @@ def test_render_with_degraded_connector(setup_test_env, monkeypatch):
 
 def test_render_with_circuit_open(setup_test_env):
     """Panel shows circuit state correctly."""
-    from src.connectors.circuit import CircuitBreaker
-    from src.connectors.registry import register_connector
+    from relay_ai.connectors.circuit import CircuitBreaker
+    from relay_ai.connectors.registry import register_connector
 
     # Register connector
     register_connector("test-conn", "src.connectors.sandbox", "SandboxConnector")
@@ -104,9 +104,9 @@ def test_render_with_circuit_open(setup_test_env):
 
 def test_panel_data_collection_no_metrics(setup_test_env):
     """Panel data collection handles no metrics gracefully."""
-    from src.connectors.circuit import CircuitBreaker
-    from src.connectors.metrics import health_status
-    from src.connectors.registry import list_enabled_connectors, register_connector
+    from relay_ai.connectors.circuit import CircuitBreaker
+    from relay_ai.connectors.metrics import health_status
+    from relay_ai.connectors.registry import list_enabled_connectors, register_connector
 
     # Register connector but no metrics
     register_connector("test-conn", "src.connectors.sandbox", "SandboxConnector")
@@ -125,9 +125,9 @@ def test_panel_data_collection_no_metrics(setup_test_env):
 
 def test_panel_data_collection_mixed_states(setup_test_env, monkeypatch):
     """Panel data collection handles mixed connector states."""
-    from src.connectors.circuit import CircuitBreaker
-    from src.connectors.metrics import health_status, record_call
-    from src.connectors.registry import register_connector
+    from relay_ai.connectors.circuit import CircuitBreaker
+    from relay_ai.connectors.metrics import health_status, record_call
+    from relay_ai.connectors.registry import register_connector
 
     monkeypatch.setenv("CONNECTOR_HEALTH_ERROR_RATE", "0.10")
 

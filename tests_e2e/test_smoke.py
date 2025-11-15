@@ -16,12 +16,12 @@ import os
 
 import pytest
 
-from src.connectors.sandbox import SandboxConnector
-from src.graph.index import URGIndex
-from src.graph.search import search
-from src.nl.executor import execute_plan
-from src.nl.planner import make_plan
-from src.orchestrator.graph import DAG, Task, ValidationError, toposort, validate
+from relay_ai.connectors.sandbox import SandboxConnector
+from relay_ai.graph.index import URGIndex
+from relay_ai.graph.search import search
+from relay_ai.nl.executor import execute_plan
+from relay_ai.nl.planner import make_plan
+from relay_ai.orchestrator.graph import DAG, Task, ValidationError, toposort, validate
 
 from .conftest import http_get_with_retry
 
@@ -296,7 +296,7 @@ def test_sandbox_connector_delete_operation(dry_run_env, mock_rbac):
 def test_urg_quick_ingest_workflow(dry_run_env, mock_rbac, temp_urg_index, monkeypatch):
     """URG quick ingest and search workflow completes successfully."""
     # Mock connector to return sample data
-    from src.connectors.base import ConnectorResult
+    from relay_ai.connectors.base import ConnectorResult
 
     def mock_list_resources(self, resource_type, filters=None):
         if resource_type == "messages":
@@ -407,7 +407,7 @@ def test_nl_dry_command_plan_renders_correctly(dry_run_env, mock_rbac):
         plan = make_plan(command, tenant="test-tenant", user_id="user1")
 
         # Execute in dry-run mode
-        from src.nl.executor import execute_plan
+        from relay_ai.nl.executor import execute_plan
 
         result = execute_plan(plan, tenant="test-tenant", user_id="user1", dry_run=True)
 

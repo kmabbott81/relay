@@ -1,8 +1,8 @@
 """Meeting Transcript Brief - Academic workflow for summarizing meetings.
 
 Usage:
-    python -m src.workflows.examples.meeting_transcript_brief --dry-run
-    python -m src.workflows.examples.meeting_transcript_brief --live
+    python -m relay_ai.workflows.examples.meeting_transcript_brief --dry-run
+    python -m relay_ai.workflows.examples.meeting_transcript_brief --live
 """
 
 import argparse
@@ -13,7 +13,6 @@ from pathlib import Path
 import yaml
 
 from relay_ai.agents.openai_adapter import create_adapter
-
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -79,9 +78,7 @@ def generate_sample_transcript() -> dict:
     }
 
 
-def format_prompt(
-    template: str, meeting_title: str, meeting_date: str, attendees: str, transcript: str
-) -> str:
+def format_prompt(template: str, meeting_title: str, meeting_date: str, attendees: str, transcript: str) -> str:
     """
     Format prompt template with variables.
 
@@ -115,7 +112,7 @@ def write_brief(output_path: Path, content: str, metadata: dict):
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write(f"# Meeting Brief\n\n")
+        f.write("# Meeting Brief\n\n")
         f.write(f"**Generated:** {datetime.utcnow().isoformat()}Z\n")
         f.write(f"**Workflow:** {metadata['workflow_name']}\n\n")
         f.write("---\n\n")

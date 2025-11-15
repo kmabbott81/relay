@@ -415,7 +415,7 @@ class TestExecutionHistory:
 
     def test_get_execution_history(self):
         """Test get execution history."""
-        from src.nl.executor import get_execution_history
+        from relay_ai.nl.executor import get_execution_history
 
         # Should not raise error even if no history
         history = get_execution_history("test-tenant", limit=10)

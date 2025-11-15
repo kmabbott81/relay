@@ -17,7 +17,7 @@ class ActionPlanner:
 
     def __init__(self):
         """Initialize planner with available actions."""
-        from src.actions import get_executor
+        from relay_ai.actions import get_executor
 
         self.executor = get_executor()
         self.available_actions = self.executor.list_actions()

@@ -212,7 +212,7 @@ class TestValidationPerformance:
 
     def test_attachment_validation_latency(self):
         """Test attachment validation is fast."""
-        from src.validation.attachments import validate_attachments
+        from relay_ai.validation.attachments import validate_attachments
 
         attachments = [
             Attachment(
@@ -232,7 +232,7 @@ class TestValidationPerformance:
 
     def test_html_sanitization_latency(self):
         """Test HTML sanitization is fast."""
-        from src.validation.html_sanitization import sanitize_html
+        from relay_ai.validation.html_sanitization import sanitize_html
 
         html = "<p>" + "Content " * 10000 + "</p>"  # ~100KB HTML
 
@@ -245,7 +245,7 @@ class TestValidationPerformance:
 
     def test_cid_validation_latency(self):
         """Test CID validation is fast."""
-        from src.validation.html_sanitization import validate_cid_references
+        from relay_ai.validation.html_sanitization import validate_cid_references
 
         html = "".join([f'<img src="cid:img{i}">' for i in range(20)])
         inline = [

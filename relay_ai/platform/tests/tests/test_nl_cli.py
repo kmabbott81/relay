@@ -17,8 +17,8 @@ from scripts.nl import cmd_dry, cmd_resume, cmd_run
 @pytest.fixture
 def mock_plan():
     """Mock plan object."""
-    from src.nl.intents import Intent
-    from src.nl.planner import ActionStep, Plan
+    from relay_ai.nl.intents import Intent
+    from relay_ai.nl.planner import ActionStep, Plan
 
     intent = Intent(
         verb="email",
@@ -49,7 +49,7 @@ def mock_plan():
 @pytest.fixture
 def mock_result_success(mock_plan):
     """Mock successful execution result."""
-    from src.nl.executor import ExecutionResult
+    from relay_ai.nl.executor import ExecutionResult
 
     return ExecutionResult(
         status="success",
@@ -69,7 +69,7 @@ def mock_result_success(mock_plan):
 @pytest.fixture
 def mock_result_paused(mock_plan):
     """Mock paused execution result."""
-    from src.nl.executor import ExecutionResult
+    from relay_ai.nl.executor import ExecutionResult
 
     return ExecutionResult(
         status="paused",
@@ -82,7 +82,7 @@ def mock_result_paused(mock_plan):
 @pytest.fixture
 def mock_result_dry(mock_plan):
     """Mock dry run result."""
-    from src.nl.executor import ExecutionResult
+    from relay_ai.nl.executor import ExecutionResult
 
     return ExecutionResult(
         status="dry",
@@ -204,8 +204,8 @@ class TestRunCommand:
     @patch("scripts.nl.execute_plan")
     def test_run_with_force(self, mock_execute, mock_make, mock_result_success):
         """Test run command with --force flag."""
-        from src.nl.intents import Intent
-        from src.nl.planner import ActionStep, Plan
+        from relay_ai.nl.intents import Intent
+        from relay_ai.nl.planner import ActionStep, Plan
 
         # Create high-risk plan
         intent = Intent(verb="delete", original_command="Delete")

@@ -10,7 +10,7 @@ import streamlit as st
 
 # Add parent directory to path to import src modules
 sys.path.append(str(Path(__file__).parent.parent))
-from src.metrics import (
+from relay_ai.metrics import (
     filter_runs_by_date,
     filter_runs_by_preset,
     filter_runs_by_provider,

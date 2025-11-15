@@ -93,7 +93,7 @@ class GraphMessageBuilder:
 
         try:
             # Import metrics here to avoid circular dependency
-            from src.telemetry.prom import (
+            from relay_ai.telemetry.prom import (
                 outlook_attachment_bytes_total,
                 outlook_graph_build_seconds,
                 outlook_html_sanitization_changes_total,
@@ -102,19 +102,19 @@ class GraphMessageBuilder:
 
             # Validate attachments (size, MIME type, count)
             if attachments:
-                from src.validation.attachments import validate_attachments
+                from relay_ai.validation.attachments import validate_attachments
 
                 validate_attachments(attachments)
 
             # Validate inline images (size, MIME type, count, CID format)
             if inline:
-                from src.validation.attachments import validate_inline_images
+                from relay_ai.validation.attachments import validate_inline_images
 
                 validate_inline_images(inline)
 
             # Validate total size (attachments + inline)
             if attachments or inline:
-                from src.validation.attachments import validate_total_size
+                from relay_ai.validation.attachments import validate_total_size
 
                 validate_total_size(attachments, inline)
 
@@ -206,7 +206,7 @@ class GraphMessageBuilder:
             # Emit build time metric (if telemetry enabled)
             if self._start_time:
                 duration = time.perf_counter() - self._start_time
-                from src.telemetry.prom import outlook_graph_build_seconds
+                from relay_ai.telemetry.prom import outlook_graph_build_seconds
 
                 if outlook_graph_build_seconds:
                     outlook_graph_build_seconds.observe(duration)

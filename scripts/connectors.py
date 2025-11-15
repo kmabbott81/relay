@@ -139,7 +139,7 @@ def cmd_test(args):
 
     # If --ingest flag is set, ingest snapshot into URG
     if hasattr(args, "ingest") and args.ingest:
-        from src.connectors.ingest import ingest_connector_snapshot
+        from relay_ai.connectors.ingest import ingest_connector_snapshot
 
         resource_type = args.resource_type or "messages"
         limit = 100  # Default ingest limit

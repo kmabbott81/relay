@@ -26,12 +26,12 @@ def test_minimal_workflow_performance_sync():
         # Test artifact creation performance
         import time  # noqa: F401
 
-        from src.artifacts import create_run_artifact, save_run_artifact  # noqa: F401
-        from src.debate import run_debate  # noqa: F401
-        from src.guardrails import run_publish_guardrails  # noqa: F401
-        from src.judge import judge_drafts  # noqa: F401
-        from src.run_workflow import print_cost_footer, write_run_log  # noqa: F401
-        from src.schemas import Draft, Judgment, ScoredDraft  # noqa: F401
+        from relay_ai.artifacts import create_run_artifact, save_run_artifact  # noqa: F401
+        from relay_ai.debate import run_debate  # noqa: F401
+        from relay_ai.guardrails import run_publish_guardrails  # noqa: F401
+        from relay_ai.judge import judge_drafts  # noqa: F401
+        from relay_ai.run_workflow import print_cost_footer, write_run_log  # noqa: F401
+        from relay_ai.schemas import Draft, Judgment, ScoredDraft  # noqa: F401
 
         minimal_judgment = Judgment(ranked=[], winner_provider="")
         minimal_drafts = []
@@ -83,7 +83,7 @@ def test_guardrails_performance():
     start_time = time.time()
 
     try:
-        from src.guardrails import run_publish_guardrails
+        from relay_ai.guardrails import run_publish_guardrails
 
         # Run guardrails multiple times to test consistency
         for _ in range(10):

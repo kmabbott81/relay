@@ -39,7 +39,7 @@ def cmd_register(args):
             sys.exit(1)
 
         # Copy template file to registry
-        from src.template_registry.registry import get_registry_path
+        from relay_ai.template_registry.registry import get_registry_path
 
         registry_dir = get_registry_path().parent
         dest_path = registry_dir / f"{args.name}_{args.version}.yaml"
@@ -58,7 +58,7 @@ def cmd_register(args):
                 sys.exit(1)
 
             schema_filename = f"{args.name}_{args.version}.schema{Path(args.schema).suffix}"
-            from src.templates.loader import get_schema_path
+            from relay_ai.templates.loader import get_schema_path
 
             schemas_dir = get_schema_path("dummy").parent
             schemas_dir.mkdir(parents=True, exist_ok=True)

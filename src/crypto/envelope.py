@@ -35,7 +35,7 @@ def encrypt(plaintext: bytes, keyring_key: dict) -> dict:
         Envelope blob with key_id, nonce, ciphertext, tag
 
     Example:
-        >>> from src.crypto.keyring import active_key
+        >>> from relay_ai.crypto.keyring import active_key
         >>> key = active_key()
         >>> envelope = encrypt(b"secret data", key)
         >>> envelope['key_id']
@@ -153,8 +153,8 @@ def encrypt_with_aad(plaintext: bytes, aad: bytes, keyring_key: dict) -> dict:
         ValueError: If key material is invalid
 
     Example:
-        >>> from src.crypto.keyring import active_key
-        >>> from src.memory.rls import hmac_user
+        >>> from relay_ai.crypto.keyring import active_key
+        >>> from relay_ai.memory.rls import hmac_user
         >>> key = active_key()
         >>> user_hash = hmac_user("user_123")
         >>> envelope = encrypt_with_aad(
@@ -211,8 +211,8 @@ def decrypt_with_aad(envelope: dict, aad: bytes, keyring_get_fn: Any = None) -> 
         cryptography.hazmat.primitives.ciphers.aead.InvalidTag: If AAD validation fails
 
     Example:
-        >>> from src.crypto.keyring import active_key
-        >>> from src.memory.rls import hmac_user
+        >>> from relay_ai.crypto.keyring import active_key
+        >>> from relay_ai.memory.rls import hmac_user
         >>> key = active_key()
         >>> user_hash = hmac_user("user_123")
         >>> envelope = encrypt_with_aad(

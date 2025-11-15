@@ -186,8 +186,8 @@ def _execute_palette_action(action: ShortcutAction):
             # Toggle favorite for selected template
             selected_template = st.session_state.get("selected_template")
             if selected_template:
-                from src.prefs import toggle_favorite_template
-                from src.security.authz import Principal, Role
+                from relay_ai.prefs import toggle_favorite_template
+                from relay_ai.security.authz import Principal, Role
 
                 user_id = st.session_state.get("user_id", "demo-user")
                 tenant_id = st.session_state.get("tenant_id", "default")

@@ -347,7 +347,7 @@ class TestCLIArgumentParsing:
                 mock_path.return_value.parent.parent.parent.parent = mock_project_root
 
                 # Import main to test CLI parsing
-                from src.workflows.examples.weekly_report_pack import main
+                from relay_ai.workflows.examples.weekly_report_pack import main
 
                 # Should run without errors in dry-run mode
                 with pytest.raises(SystemExit) as exc_info:
@@ -366,7 +366,6 @@ class TestCLIArgumentParsing:
 
                 # Mock OpenAI client to avoid real API calls
                 with patch("src.agents.openai_adapter.OpenAI"):
-
                     # This would normally call live API, but we've mocked it
                     # Just verify it doesn't crash with argument parsing
                     pass
@@ -374,7 +373,7 @@ class TestCLIArgumentParsing:
     def test_cli_requires_mode_flag(self, mock_project_root):
         """Test CLI requires either --dry-run or --live flag."""
         with patch("sys.argv", ["weekly_report_pack.py"]):
-            from src.workflows.examples.weekly_report_pack import main
+            from relay_ai.workflows.examples.weekly_report_pack import main
 
             # Should fail without mode flag
             with pytest.raises(SystemExit) as exc_info:
@@ -453,7 +452,7 @@ class TestWorkflowErrorHandling:
             mock_path.return_value.parent.parent.parent.parent = mock_project_root
 
             # Live mode without API key should fail
-            from src.agents.openai_adapter import OpenAIAdapterError
+            from relay_ai.agents.openai_adapter import OpenAIAdapterError
 
             with pytest.raises(OpenAIAdapterError, match="OPENAI_API_KEY"):
                 weekly_run_workflow(dry_run=False)
@@ -464,7 +463,7 @@ class TestDeterministicBehavior:
 
     def test_mock_adapter_is_deterministic(self):
         """Test mock adapter produces consistent results."""
-        from src.agents.openai_adapter import create_adapter
+        from relay_ai.agents.openai_adapter import create_adapter
 
         adapter = create_adapter(use_mock=True)
 
@@ -480,7 +479,7 @@ class TestDeterministicBehavior:
 
     def test_mock_adapter_no_api_key_required(self, monkeypatch):
         """Test mock adapter works without API key."""
-        from src.agents.openai_adapter import create_adapter
+        from relay_ai.agents.openai_adapter import create_adapter
 
         # Don't set API key
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)

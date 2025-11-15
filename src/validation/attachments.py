@@ -14,7 +14,7 @@ def _record_validation_error(error_code: str) -> None:
     Args:
         error_code: Validation error code (e.g., "validation_error_attachment_too_large")
     """
-    from src.telemetry.prom import record_structured_error
+    from relay_ai.telemetry.prom import record_structured_error
 
     record_structured_error(provider="google", action="gmail.send", code=error_code, source="gmail.validation")
 

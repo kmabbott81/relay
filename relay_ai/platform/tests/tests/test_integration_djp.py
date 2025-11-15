@@ -218,8 +218,8 @@ def test_mock_integration_workflow_structure():
     # This test doesn't require API keys and validates the integration structure
 
     # Test that we can import and instantiate key components
-    from src.artifacts import create_run_artifact
-    from src.schemas import Draft, Judgment, ScoredDraft
+    from relay_ai.artifacts import create_run_artifact
+    from relay_ai.schemas import Draft, Judgment, ScoredDraft
 
     # Create mock data
     mock_drafts = [

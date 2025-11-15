@@ -43,7 +43,7 @@ def test_retry_path_first_fails_second_succeeds(monkeypatch, tmp_path):
         return {"summary": "Success on retry"}
 
     # Monkeypatch the workflow map
-    from src.workflows import adapter
+    from relay_ai.workflows import adapter
 
     original_map = adapter.WORKFLOW_MAP.copy()
     adapter.WORKFLOW_MAP["inbox_drive_sweep"] = failing_then_succeeding_adapter
@@ -79,7 +79,7 @@ def test_task_failure_raises_runner_error(tmp_path):
     def always_fails(params):
         raise RuntimeError("Task always fails")
 
-    from src.workflows import adapter
+    from relay_ai.workflows import adapter
 
     original_map = adapter.WORKFLOW_MAP.copy()
     adapter.WORKFLOW_MAP["inbox_drive_sweep"] = always_fails
@@ -101,7 +101,7 @@ def test_task_failure_raises_runner_error(tmp_path):
 
 def test_payload_passing_between_tasks(tmp_path):
     """Test that outputs from upstream tasks are passed to downstream."""
-    from src.workflows import adapter
+    from relay_ai.workflows import adapter
 
     original_map = adapter.WORKFLOW_MAP.copy()
 

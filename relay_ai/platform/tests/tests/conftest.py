@@ -95,7 +95,7 @@ def _enable_rbac_and_budgets(monkeypatch):
     monkeypatch.setenv("REDIS_URL", "redis://default:zhtagqDujRcWQzETQOgHYLYYtiVduGTe@crossover.proxy.rlwy.net:22070")
 
     # Reinitialize metadata database after setting env vars
-    from src.metadata import init_metadata_db
+    from relay_ai.metadata import init_metadata_db
 
     init_metadata_db()
 
@@ -175,7 +175,7 @@ def mock_cost_logger(tmp_path):
             tracker.log_event("tenant", "workflow", "model", 100, 50, 0.001)
             assert log_path.exists()
     """
-    from src.agents.openai_adapter import CostTracker
+    from relay_ai.agents.openai_adapter import CostTracker
 
     cost_log_path = tmp_path / "cost_events.jsonl"
     tracker = CostTracker(cost_log_path)
@@ -389,7 +389,7 @@ def mock_workflow_map(monkeypatch):
         return {"brief": f"Meeting: {params.get('meeting_title', 'Untitled')}", "action_items": []}
 
     # Sprint 32: Import template adapter to include in mock map
-    from src.workflows.adapter import template_adapter
+    from relay_ai.workflows.adapter import template_adapter
 
     mock_map = {
         "inbox_drive_sweep": mock_inbox_drive_sweep,
@@ -421,7 +421,7 @@ def clean_graph_env(tmp_path, monkeypatch):
     ensuring no state bleeding between tests.
     """
     # Reset global index before each test
-    from src.graph.index import reset_index
+    from relay_ai.graph.index import reset_index
 
     reset_index()
 

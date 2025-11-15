@@ -40,7 +40,7 @@ class TestFileUploadRequest:
 
     def test_minimal_upload_request(self):
         """Test minimal required fields"""
-        # TODO: Import FileUploadRequest from src.knowledge.schemas
+        # TODO: Import FileUploadRequest from relay_ai.knowledge.schemas
         # request = FileUploadRequest()
         # assert request.title is None
         # assert request.source == "upload"

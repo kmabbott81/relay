@@ -300,7 +300,7 @@ class TestMicrosoftConfiguration:
 
     def test_is_configured_true(self):
         """Test is_configured returns True when MS_CLIENT_ID is set."""
-        from src.actions.adapters.microsoft import is_configured
+        from relay_ai.actions.adapters.microsoft import is_configured
 
         os.environ["MS_CLIENT_ID"] = "test-client-id"
         assert is_configured() is True
@@ -308,7 +308,7 @@ class TestMicrosoftConfiguration:
 
     def test_is_configured_false(self):
         """Test is_configured returns False when MS_CLIENT_ID is not set."""
-        from src.actions.adapters.microsoft import is_configured
+        from relay_ai.actions.adapters.microsoft import is_configured
 
         os.environ.pop("MS_CLIENT_ID", None)
         assert is_configured() is False

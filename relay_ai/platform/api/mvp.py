@@ -34,6 +34,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+
 from relay_ai.platform.api.auth_router import router as auth_router
 
 # Import routers via adapters (production-proven code)
@@ -54,7 +55,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 try:
-    from src.common.middleware.request_id import RequestIDMiddleware
+    from relay_ai.common.middleware.request_id import RequestIDMiddleware
 except ImportError:
     # Fallback: Define minimal RequestIDMiddleware if not found
     class RequestIDMiddleware:

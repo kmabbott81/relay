@@ -19,7 +19,7 @@ if str(REPO_ROOT) not in sys.path:
 # Import RLS helpers from src/memory/rls.py
 # These are production-proven R2 modules. Do NOT modify.
 try:
-    from src.memory.rls import (
+    from relay_ai.memory.rls import (
         RLSMiddlewareContext,
         clear_rls_session_variable,
         get_rls_context,

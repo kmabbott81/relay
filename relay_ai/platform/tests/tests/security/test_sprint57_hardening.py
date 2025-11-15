@@ -80,7 +80,7 @@ def test_demo_key_removed_from_security_module():
     # Read security.py source to verify demo key is removed
     import inspect
 
-    from src.auth import security
+    from relay_ai.auth import security
 
     source = inspect.getsource(security)
 
@@ -222,7 +222,7 @@ def test_prompt_length_check_applies_to_chat_stream():
 
 def test_rate_limiter_exists():
     """Rate limiter module exists and can be imported."""
-    from src.limits.limiter import get_rate_limiter
+    from relay_ai.limits.limiter import get_rate_limiter
 
     limiter = get_rate_limiter()
     assert limiter is not None
@@ -231,7 +231,7 @@ def test_rate_limiter_exists():
 
 def test_rate_limit_check_method():
     """Rate limiter has check_limit method."""
-    from src.limits.limiter import get_rate_limiter
+    from relay_ai.limits.limiter import get_rate_limiter
 
     limiter = get_rate_limiter()
     assert callable(getattr(limiter, "check_limit", None))
@@ -270,7 +270,7 @@ def test_chat_stream_endpoint_uses_rate_limiting():
 
 def test_hmac_module_imports():
     """HMAC module imports successfully (Sprint 57 Step 5)."""
-    from src.security import hmac
+    from relay_ai.security import hmac
 
     assert hasattr(hmac, "compute_signature")
     assert hasattr(hmac, "verify_signature")
@@ -279,7 +279,7 @@ def test_hmac_module_imports():
 
 def test_compute_signature_returns_hex():
     """compute_signature returns 64-character hex string (HMAC-SHA256)."""
-    from src.security.hmac import compute_signature
+    from relay_ai.security.hmac import compute_signature
 
     body = b"test message"
     secret = "test_secret"
@@ -293,7 +293,7 @@ def test_compute_signature_returns_hex():
 
 def test_compute_signature_deterministic():
     """compute_signature is deterministic - same input produces same output."""
-    from src.security.hmac import compute_signature
+    from relay_ai.security.hmac import compute_signature
 
     body = b"test message"
     secret = "test_secret"
@@ -306,7 +306,7 @@ def test_compute_signature_deterministic():
 
 def test_compute_signature_different_for_different_inputs():
     """compute_signature produces different outputs for different inputs."""
-    from src.security.hmac import compute_signature
+    from relay_ai.security.hmac import compute_signature
 
     secret = "test_secret"
 
@@ -318,7 +318,7 @@ def test_compute_signature_different_for_different_inputs():
 
 def test_verify_signature_accepts_valid_signature():
     """verify_signature returns True for valid signature."""
-    from src.security.hmac import compute_signature, verify_signature
+    from relay_ai.security.hmac import compute_signature, verify_signature
 
     body = b'{"action": "test"}'
     secret = "my_secret"
@@ -330,7 +330,7 @@ def test_verify_signature_accepts_valid_signature():
 
 def test_verify_signature_rejects_invalid_signature():
     """verify_signature returns False for invalid signature."""
-    from src.security.hmac import verify_signature
+    from relay_ai.security.hmac import verify_signature
 
     body = b'{"action": "test"}'
     secret = "my_secret"
@@ -343,7 +343,7 @@ def test_verify_signature_uses_constant_time_comparison():
     """verify_signature uses hmac.compare_digest for constant-time comparison."""
     import inspect
 
-    from src.security import hmac as hmac_module
+    from relay_ai.security import hmac as hmac_module
 
     source = inspect.getsource(hmac_module.verify_signature)
 
@@ -353,7 +353,7 @@ def test_verify_signature_uses_constant_time_comparison():
 
 def test_get_signing_secret_returns_env_var():
     """get_signing_secret returns ACTIONS_SIGNING_SECRET from environment."""
-    from src.security.hmac import get_signing_secret
+    from relay_ai.security.hmac import get_signing_secret
 
     test_secret = "test_hmac_secret"
 
@@ -364,7 +364,7 @@ def test_get_signing_secret_returns_env_var():
 
 def test_get_signing_secret_returns_none_when_unset():
     """get_signing_secret returns None when ACTIONS_SIGNING_SECRET is not set."""
-    from src.security.hmac import get_signing_secret
+    from relay_ai.security.hmac import get_signing_secret
 
     with patch.dict(os.environ, {}, clear=False):
         if "ACTIONS_SIGNING_SECRET" in os.environ:
@@ -376,7 +376,7 @@ def test_get_signing_secret_returns_none_when_unset():
 
 def test_hmac_verification_is_opt_in():
     """HMAC verification is opt-in - only enforced when ACTIONS_SIGNING_SECRET is set."""
-    from src.security.hmac import get_signing_secret
+    from relay_ai.security.hmac import get_signing_secret
 
     # Without secret set, verification should be skipped
     with patch.dict(os.environ, {}, clear=False):
@@ -397,7 +397,7 @@ def test_hmac_verification_is_opt_in():
 
 def test_security_module_imports():
     """Security module imports successfully."""
-    from src.security import hmac
+    from relay_ai.security import hmac
 
     assert hmac is not None
 
@@ -412,7 +412,7 @@ def test_webapi_imports_without_error():
 
 def test_webapi_has_global_exception_handler():
     """webapi defines global exception handler."""
-    from src.webapi import app
+    from relay_ai.webapi import app
 
     # Check that exception handlers are registered
     assert hasattr(app, "exception_handlers")
@@ -420,7 +420,7 @@ def test_webapi_has_global_exception_handler():
 
 def test_webapi_has_rate_limited_endpoints():
     """webapi has rate-limited endpoints for AI."""
-    from src.webapi import app
+    from relay_ai.webapi import app
 
     # Check routes include AI endpoints
     routes = [route.path for route in app.routes]
@@ -429,7 +429,7 @@ def test_webapi_has_rate_limited_endpoints():
 
 def test_limits_module_imports():
     """Limits module imports successfully."""
-    from src.limits import limiter
+    from relay_ai.limits import limiter
 
     assert limiter is not None
     assert hasattr(limiter, "get_rate_limiter")
@@ -437,7 +437,7 @@ def test_limits_module_imports():
 
 def test_auth_security_module_has_require_scopes():
     """Auth security module has require_scopes decorator."""
-    from src.auth.security import require_scopes
+    from relay_ai.auth.security import require_scopes
 
     assert callable(require_scopes)
 
@@ -480,7 +480,7 @@ def test_request_too_large_returns_413():
     """POST with Content-Length > 2MB returns 413 (integration test)."""
     from fastapi.testclient import TestClient
 
-    from src.webapi import app
+    from relay_ai.webapi import app
 
     client = TestClient(app)
 
@@ -497,7 +497,7 @@ def test_prompt_too_long_returns_400():
     """POST to /ai/plan with prompt > 4000 chars returns 400 (integration test)."""
     from fastapi.testclient import TestClient
 
-    from src.webapi import app
+    from relay_ai.webapi import app
 
     client = TestClient(app)
 
@@ -515,7 +515,7 @@ def test_hmac_missing_signature_returns_401():
     """POST to /actions/execute without X-Signature returns 401 when HMAC enabled (integration test)."""
     from fastapi.testclient import TestClient
 
-    from src.webapi import app
+    from relay_ai.webapi import app
 
     # Only run if ACTIONS_SIGNING_SECRET is set
     if not os.getenv("ACTIONS_SIGNING_SECRET"):
@@ -534,7 +534,7 @@ def test_hmac_invalid_signature_returns_401():
     """POST to /actions/execute with invalid X-Signature returns 401 (integration test)."""
     from fastapi.testclient import TestClient
 
-    from src.webapi import app
+    from relay_ai.webapi import app
 
     # Only run if ACTIONS_SIGNING_SECRET is set
     if not os.getenv("ACTIONS_SIGNING_SECRET"):
@@ -555,7 +555,7 @@ def test_rate_limit_exceeded_returns_429():
     """Multiple rapid requests to /ai/plan return 429 (integration test)."""
     from fastapi.testclient import TestClient
 
-    from src.webapi import app
+    from relay_ai.webapi import app
 
     client = TestClient(app)
 

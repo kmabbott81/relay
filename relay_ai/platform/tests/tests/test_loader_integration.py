@@ -71,7 +71,7 @@ def test_load_schema(temp_templates):
 def test_load_and_validate_success(temp_templates, monkeypatch):
     """Test successful load and validation."""
     # Register template
-    from src.template_registry.registry import register
+    from relay_ai.template_registry.registry import register
 
     monkeypatch.setenv("USER_RBAC_ROLE", "Author")
     register(
@@ -91,7 +91,7 @@ def test_load_and_validate_success(temp_templates, monkeypatch):
 
 def test_load_and_validate_failure(temp_templates, monkeypatch):
     """Test validation failure."""
-    from src.template_registry.registry import register
+    from relay_ai.template_registry.registry import register
 
     monkeypatch.setenv("USER_RBAC_ROLE", "Author")
     register(
@@ -108,7 +108,7 @@ def test_load_and_validate_failure(temp_templates, monkeypatch):
 
 def test_load_and_validate_deprecated(temp_templates, monkeypatch):
     """Test loading deprecated template fails."""
-    from src.template_registry.registry import deprecate, register
+    from relay_ai.template_registry.registry import deprecate, register
 
     monkeypatch.setenv("USER_RBAC_ROLE", "Author")
     register(name="test", version="1.0", workflow_ref="inbox_drive_sweep")
@@ -120,7 +120,7 @@ def test_load_and_validate_deprecated(temp_templates, monkeypatch):
 
 def test_load_and_validate_no_schema(temp_templates, monkeypatch):
     """Test loading template without schema."""
-    from src.template_registry.registry import register
+    from relay_ai.template_registry.registry import register
 
     monkeypatch.setenv("USER_RBAC_ROLE", "Author")
     register(name="test", version="1.0", workflow_ref="inbox_drive_sweep")

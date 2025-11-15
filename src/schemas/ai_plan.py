@@ -6,7 +6,7 @@ These schemas define the structure for:
 - Action execution results and dependency tracking
 - Multi-step workflow orchestration
 
-Sprint 58 Foundations: Extracted from src.ai.planner for reusability and testing.
+Sprint 58 Foundations: Extracted from relay_ai.ai.planner for reusability and testing.
 Sprint 58 Slice 5: Added strict validation (extra='forbid', params bounds, action_id regex).
 """
 

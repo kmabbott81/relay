@@ -264,7 +264,7 @@ def main():
         sys.exit(1)  # Fail loudly; no Redis updates
 
     # Get policy recommendation
-    from src.rollout.policy import gmail_policy
+    from relay_ai.rollout.policy import gmail_policy
 
     recommendation = gmail_policy(metrics, current_percent=current_pct)
     print(f"[INFO] Policy recommendation: {recommendation.target_percent}% (reason: {recommendation.reason})")
@@ -330,7 +330,7 @@ def main():
             sys.exit(1)  # Fail fast; surfaces in GitHub Actions
 
     # Log to audit trail
-    from src.rollout.audit import append_rollout_log
+    from relay_ai.rollout.audit import append_rollout_log
 
     append_rollout_log(
         feature="google",

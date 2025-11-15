@@ -182,7 +182,7 @@ def test_expire_pending_mixed_checkpoints(temp_checkpoints_path: Path, temp_stat
 
 def test_expire_pending_does_not_affect_approved(temp_checkpoints_path: Path, temp_state_store: Path):
     """Test that already approved checkpoints are not expired."""
-    from src.orchestrator.checkpoints import approve_checkpoint
+    from relay_ai.orchestrator.checkpoints import approve_checkpoint
 
     # Create checkpoint
     checkpoint_id = "run_approved"
@@ -222,7 +222,7 @@ def test_expire_pending_does_not_affect_approved(temp_checkpoints_path: Path, te
 
 def test_scheduler_emits_checkpoint_expired_event(temp_checkpoints_path: Path, temp_state_store: Path):
     """Test that scheduler logic would emit checkpoint_expired events."""
-    from src.orchestrator.state_store import record_event
+    from relay_ai.orchestrator.state_store import record_event
 
     # Create old checkpoint
     checkpoint_id = "run_for_event"

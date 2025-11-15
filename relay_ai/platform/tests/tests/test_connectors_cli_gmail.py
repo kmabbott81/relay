@@ -148,7 +148,7 @@ def test_gmail_cli_test_dry_run():
 
 def test_gmail_cli_health_check():
     """Test that Gmail connector can be health-checked via registry."""
-    from src.connectors.registry import register_connector
+    from relay_ai.connectors.registry import register_connector
 
     # Register Gmail connector
     entry = register_connector(
@@ -166,7 +166,7 @@ def test_gmail_cli_health_check():
 
 def test_gmail_cli_circuit_breaker_status():
     """Test that circuit breaker status is tracked for Gmail connector."""
-    from src.connectors.circuit import CircuitBreaker
+    from relay_ai.connectors.circuit import CircuitBreaker
 
     # Create circuit breaker for Gmail
     circuit = CircuitBreaker("gmail-circuit-test")
@@ -193,7 +193,7 @@ def test_gmail_connector_metrics_recorded():
     os.environ["DRY_RUN"] = "true"
     os.environ["LIVE"] = "false"
 
-    from src.connectors.gmail import GmailConnector
+    from relay_ai.connectors.gmail import GmailConnector
 
     connector = GmailConnector(connector_id="gmail-metrics-test", tenant_id="test-tenant", user_id="test-user")
 

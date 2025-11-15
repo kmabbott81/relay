@@ -2,7 +2,7 @@
 Temporary import redirect shim for src.* → relay_ai.platform.* migration.
 
 This module installs a custom MetaPathFinder/Loader that intercepts
-'from src.*' imports and redirects them to new locations without requiring
+'from relay_ai.*' imports and redirects them to new locations without requiring
 changes to 197+ source files.
 
 Usage:
@@ -18,7 +18,7 @@ SHIM_REMOVE_PLAN:
     Steps:
     1. Run codemod to rewrite imports:
        python tools/rewire_imports.py
-       # Rewrites all "from src.*" → "from relay_ai.platform.*"
+       # Rewrites all "from relay_ai.*" → "from relay_ai.platform.*"
 
     2. Verify tests still pass:
        pytest -q  # Expect all green
@@ -44,7 +44,6 @@ import importlib.abc
 import importlib.util
 import sys
 from typing import Optional
-
 
 # Map old import paths to new locations
 IMPORT_MAP = {
@@ -91,10 +90,7 @@ class _SrcImportProxy(importlib.abc.MetaPathFinder, importlib.abc.Loader):
 
         # Return a spec that uses us as the loader
         spec = importlib.util.spec_from_loader(
-            fullname,
-            self,
-            origin=real_spec.origin,
-            is_package=real_spec.submodule_search_locations is not None
+            fullname, self, origin=real_spec.origin, is_package=real_spec.submodule_search_locations is not None
         )
         if spec and real_spec and real_spec.submodule_search_locations:
             spec.submodule_search_locations = real_spec.submodule_search_locations

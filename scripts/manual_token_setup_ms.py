@@ -275,7 +275,7 @@ async def main():
     print()
     print("  2. Or send email directly via adapter:")
     print('     python -c "')
-    print("       from src.actions.adapters.microsoft import MicrosoftAdapter")
+    print("       from relay_ai.actions.adapters.microsoft import MicrosoftAdapter")
     print("       import asyncio")
     print("       async def test():")
     print("           adapter = MicrosoftAdapter()")

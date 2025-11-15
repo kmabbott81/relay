@@ -1,0 +1,143 @@
+# Prometheus Configuration for Relay AI Infrastructure
+# Date: 2025-11-15
+# Environment: Beta & Production
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: 'production'
+    team: 'platform'
+
+# Alert manager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Alert rules files
+rule_files:
+  - '/etc/prometheus/rules/api-alerts.yml'
+  - '/etc/prometheus/rules/database-alerts.yml'
+  - '/etc/prometheus/rules/deployment-alerts.yml'
+  - '/etc/prometheus/rules/resource-alerts.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Beta API
+  - job_name: 'relay-beta-api'
+    static_configs:
+      - targets: ['relay-beta-api.railway.app']
+    metrics_path: '/metrics'
+    scheme: https
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    honor_timestamps: true
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+      - source_labels: [__scheme__]
+        target_label: scheme
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'go_.*'
+        action: drop  # Drop Go runtime metrics to reduce cardinality
+
+  # Production API
+  - job_name: 'relay-prod-api'
+    static_configs:
+      - targets: ['relay-prod-api.railway.app']
+    metrics_path: '/metrics'
+    scheme: https
+    scrape_interval: 15s
+    honor_timestamps: true
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+
+  # Web App (Vercel)
+  - job_name: 'relay-web-app'
+    static_configs:
+      - targets: ['relay-studio-one.vercel.app']
+    metrics_path: '/_next/metrics'
+    scheme: https
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    honor_timestamps: false
+
+  # Database metrics (from application layer)
+  - job_name: 'relay-database-metrics'
+    static_configs:
+      - targets: ['relay-beta-api.railway.app']
+    metrics_path: '/metrics/database'
+    scheme: https
+    scrape_interval: 30s
+
+  # GitHub Actions metrics (polling endpoint)
+  - job_name: 'github-actions-metrics'
+    static_configs:
+      - targets: ['metrics-collector.internal']  # Internal service that polls GitHub API
+    metrics_path: '/github/metrics'
+    scheme: http
+    scrape_interval: 1m
+
+  # Supabase/PostgreSQL metrics (if exposed)
+  - job_name: 'supabase-metrics'
+    static_configs:
+      - targets: ['supabase-metrics.internal']  # Metrics bridge for Supabase
+    metrics_path: '/metrics'
+    scheme: http
+    scrape_interval: 30s
+
+  # Local Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+    scheme: http
+    scrape_interval: 15s
+
+# Recording rules - pre-compute expensive queries
+recording_rules:
+  - name: 'api_latency_percentiles'
+    interval: 30s
+    rules:
+      - record: 'api:request_duration:p50:5m'
+        expr: 'histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))'
+      - record: 'api:request_duration:p95:5m'
+        expr: 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))'
+      - record: 'api:request_duration:p99:5m'
+        expr: 'histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))'
+
+  - name: 'api_error_rates'
+    interval: 30s
+    rules:
+      - record: 'api:error_rate:5m'
+        expr: |
+          sum(rate(http_requests_total{status_code=~"5.."}[5m])) by (endpoint, environment)
+          /
+          sum(rate(http_requests_total[5m])) by (endpoint, environment)
+      - record: 'api:success_rate:5m'
+        expr: |
+          sum(rate(http_requests_total{status_code=~"2.."}[5m])) by (endpoint, environment)
+          /
+          sum(rate(http_requests_total[5m])) by (endpoint, environment)
+
+  - name: 'resource_utilization'
+    interval: 30s
+    rules:
+      - record: 'process:memory:percent'
+        expr: '(process_resident_memory_bytes / 536870912) * 100'  # Assuming 512MB max
+      - record: 'process:cpu:percent'
+        expr: 'rate(process_cpu_seconds_total[5m]) * 100'
+      - record: 'database:connection:utilization:percent'
+        expr: '(database_connections_active / database_connections_total) * 100'
+
+# Remote storage configuration (optional, for long-term retention)
+# remote_write:
+#   - url: "http://remote-storage:9009/api/v1/write"
+#     queue_config:
+#       max_shards: 100
+#       max_samples_per_send: 10000
+#       batch_send_wait: 5s

@@ -20,7 +20,7 @@ def test_parse_bearer_token():
     """parse_bearer_token extracts token from Authorization header."""
     from unittest.mock import MagicMock
 
-    from src.auth.security import parse_bearer_token
+    from relay_ai.auth.security import parse_bearer_token
 
     # Valid Bearer token
     request = MagicMock()
@@ -42,7 +42,7 @@ def test_parse_bearer_token():
 
 def test_role_scopes_mapping():
     """ROLE_SCOPES defines correct viewer/developer/admin scopes."""
-    from src.auth.security import ROLE_SCOPES
+    from relay_ai.auth.security import ROLE_SCOPES
 
     # Viewer: preview only
     assert ROLE_SCOPES["viewer"] == ["actions:preview"]
@@ -63,7 +63,7 @@ def test_role_scopes_mapping():
 
 def test_canonical_json_stable_ordering():
     """canonical_json produces stable key order for hashing."""
-    from src.audit.logger import canonical_json
+    from relay_ai.audit.logger import canonical_json
 
     obj1 = {"b": 2, "a": 1, "c": 3}
     obj2 = {"a": 1, "c": 3, "b": 2}
@@ -79,7 +79,7 @@ def test_canonical_json_stable_ordering():
 
 def test_sha256_hex_produces_64_char_hash():
     """sha256_hex produces 64-character hex digest."""
-    from src.audit.logger import sha256_hex
+    from relay_ai.audit.logger import sha256_hex
 
     data = "test data"
     hash_result = sha256_hex(data)
@@ -96,7 +96,7 @@ def test_sha256_hex_produces_64_char_hash():
 
 def test_audit_params_redaction_logic():
     """Verify params redaction logic: hash + prefix64 only."""
-    from src.audit.logger import canonical_json, sha256_hex
+    from relay_ai.audit.logger import canonical_json, sha256_hex
 
     # Simulate params with secrets
     params = {"url": "https://api.example.com", "api_key": "secret123", "payload": {"data": "sensitive"}}
@@ -122,7 +122,7 @@ def test_audit_params_redaction_logic():
 
 def test_idempotency_key_hashing():
     """Idempotency keys are hashed before storage."""
-    from src.audit.logger import sha256_hex
+    from relay_ai.audit.logger import sha256_hex
 
     idempotency_key = "user-key-12345"
     idempotency_key_hash = sha256_hex(idempotency_key)
@@ -225,7 +225,7 @@ def test_audit_endpoint_queries_with_filters():
 
 def test_audit_module_imports():
     """Audit logger module imports successfully."""
-    from src.audit import logger
+    from relay_ai.audit import logger
 
     assert hasattr(logger, "write_audit")
     assert hasattr(logger, "canonical_json")
@@ -234,7 +234,7 @@ def test_audit_module_imports():
 
 def test_auth_module_imports():
     """Auth security module imports successfully."""
-    from src.auth import security
+    from relay_ai.auth import security
 
     assert hasattr(security, "require_scopes")
     assert hasattr(security, "load_api_key")
@@ -244,7 +244,7 @@ def test_auth_module_imports():
 
 def test_db_connection_module_imports():
     """Database connection module imports successfully."""
-    from src.db import connection
+    from relay_ai.db import connection
 
     assert hasattr(connection, "get_connection")
     assert hasattr(connection, "DatabasePool")
@@ -253,7 +253,7 @@ def test_db_connection_module_imports():
 
 def test_webapi_has_audit_endpoint():
     """webapi defines GET /audit endpoint."""
-    from src.webapi import app
+    from relay_ai.webapi import app
 
     # Check routes include /audit
     routes = [route.path for route in app.routes]
@@ -322,7 +322,7 @@ def test_bounded_audit_status_enums():
 
 def test_bounded_role_enums():
     """Role enum values match ROLE_SCOPES mapping."""
-    from src.auth.security import ROLE_SCOPES
+    from relay_ai.auth.security import ROLE_SCOPES
 
     # Database schema defines: 'admin', 'developer', 'viewer'
     expected_roles = ["admin", "developer", "viewer"]

@@ -938,7 +938,7 @@ async def get_audit_logs(
     """
     from datetime import datetime
 
-    from src.db.connection import get_connection
+    from relay_ai.db.connection import get_connection
 
     # Validate limit
     if limit < 1 or limit > 200:
@@ -1095,7 +1095,7 @@ async def oauth_google_authorize(
     """
     import urllib.parse
 
-    from src.auth.oauth.state import OAuthStateManager
+    from relay_ai.auth.oauth.state import OAuthStateManager
 
     # Get environment variables
     client_id = os.getenv("GOOGLE_CLIENT_ID")
@@ -1129,7 +1129,7 @@ async def oauth_google_authorize(
     authorize_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urllib.parse.urlencode(auth_params)}"
 
     # Emit metric
-    from src.telemetry import oauth_events
+    from relay_ai.telemetry import oauth_events
 
     oauth_events.labels(provider="google", event="authorize_started").inc()
 
@@ -1161,21 +1161,21 @@ async def oauth_google_callback(
     """
     import httpx
 
-    from src.auth.oauth.tokens import OAuthTokenCache
+    from relay_ai.auth.oauth.tokens import OAuthTokenCache
 
     # Check for OAuth error
     if error:
-        from src.telemetry import oauth_events
+        from relay_ai.telemetry import oauth_events
 
         oauth_events.labels(provider="google", event="callback_error").inc()
         raise HTTPException(status_code=400, detail=f"OAuth error: {error}")
 
     # Sprint 54: Validate state and retrieve context
-    from src.auth.oauth.state import validate_and_retrieve_context
+    from relay_ai.auth.oauth.state import validate_and_retrieve_context
 
     state_context = validate_and_retrieve_context(state)
     if not state_context:
-        from src.telemetry import oauth_events
+        from relay_ai.telemetry import oauth_events
 
         oauth_events.labels(provider="google", event="invalid_state").inc()
         raise HTTPException(status_code=400, detail="Invalid or expired state token")
@@ -1207,7 +1207,7 @@ async def oauth_google_callback(
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(token_url, data=token_data)
             if response.status_code != 200:
-                from src.telemetry import oauth_events
+                from relay_ai.telemetry import oauth_events
 
                 oauth_events.labels(provider="google", event="token_exchange_failed").inc()
                 raise HTTPException(
@@ -1216,7 +1216,7 @@ async def oauth_google_callback(
 
             token_response = response.json()
     except httpx.TimeoutException as e:
-        from src.telemetry import oauth_events
+        from relay_ai.telemetry import oauth_events
 
         oauth_events.labels(provider="google", event="token_exchange_timeout").inc()
         raise HTTPException(status_code=504, detail="Token exchange timeout") from e
@@ -1228,7 +1228,7 @@ async def oauth_google_callback(
     scope = token_response.get("scope")
 
     if not access_token:
-        from src.telemetry import oauth_events
+        from relay_ai.telemetry import oauth_events
 
         oauth_events.labels(provider="google", event="missing_access_token").inc()
         raise HTTPException(status_code=502, detail="No access token in response")
@@ -1246,7 +1246,7 @@ async def oauth_google_callback(
     )
 
     # Emit metric
-    from src.telemetry import oauth_events
+    from relay_ai.telemetry import oauth_events
 
     oauth_events.labels(provider="google", event="tokens_stored").inc()
 
@@ -1268,7 +1268,7 @@ async def oauth_google_status(
         linked: True if OAuth tokens exist for this workspace
         scopes: Granted OAuth scopes (if linked)
     """
-    from src.auth.oauth.tokens import OAuthTokenCache
+    from relay_ai.auth.oauth.tokens import OAuthTokenCache
 
     # TODO: Get actor_id from request context
     actor_id = "user_temp_001"
@@ -1305,8 +1305,8 @@ async def plan_with_ai(
 
     Requires scope: actions:preview
     """
-    from src.ai import ActionPlanner
-    from src.ai.orchestrator import get_orchestrator
+    from relay_ai.ai import ActionPlanner
+    from relay_ai.ai.orchestrator import get_orchestrator
 
     if not ACTIONS_ENABLED:
         raise HTTPException(status_code=404, detail="Actions feature not enabled")
@@ -1354,7 +1354,7 @@ async def plan_with_ai_v2(
     Recommended over /ai/plan for production use.
     Requires scope: actions:preview
     """
-    from src.ai.planner_v2 import plan_actions
+    from relay_ai.ai.planner_v2 import plan_actions
 
     if not ACTIONS_ENABLED:
         raise HTTPException(status_code=404, detail="Actions feature not enabled")
@@ -1403,9 +1403,9 @@ async def execute_ai_plan(
 
     Requires scope: actions:execute
     """
-    from src.queue.simple_queue import SimpleQueue
-    from src.security.permissions import can_execute
-    from src.telemetry.prom import ai_jobs_total
+    from relay_ai.queue.simple_queue import SimpleQueue
+    from relay_ai.security.permissions import can_execute
+    from relay_ai.telemetry.prom import ai_jobs_total
 
     if not ACTIONS_ENABLED:
         raise HTTPException(status_code=404, detail="Actions feature not enabled")
@@ -1416,7 +1416,7 @@ async def execute_ai_plan(
         raise HTTPException(status_code=400, detail="Missing 'actions' field")
 
     # Sprint 60 Phase 2: Workspace isolation enforcement (CRITICAL-3)
-    from src.security.workspace import ensure_same_workspace, get_authenticated_workspace
+    from relay_ai.security.workspace import ensure_same_workspace, get_authenticated_workspace
 
     auth_workspace_id = get_authenticated_workspace(request)
     body_workspace_id = body.get("workspace_id")
@@ -1500,7 +1500,7 @@ async def list_ai_jobs(
         raise HTTPException(status_code=404, detail="Actions feature not enabled")
 
     # Sprint 60 Phase 2: Workspace isolation enforcement (CRITICAL-2, HIGH-4)
-    from src.security.workspace import ensure_same_workspace, get_authenticated_workspace
+    from relay_ai.security.workspace import ensure_same_workspace, get_authenticated_workspace
 
     auth_workspace_id = get_authenticated_workspace(request)
     ensure_same_workspace(auth_workspace_id, workspace_id)
@@ -1511,7 +1511,7 @@ async def list_ai_jobs(
 
     # Initialize queue
     try:
-        from src.queue.simple_queue import SimpleQueue
+        from relay_ai.queue.simple_queue import SimpleQueue
 
         queue = SimpleQueue()
     except ValueError as e:
@@ -1582,13 +1582,13 @@ async def get_ai_job_status(
 
     Requires scope: actions:preview
     """
-    from src.queue.simple_queue import SimpleQueue
+    from relay_ai.queue.simple_queue import SimpleQueue
 
     if not ACTIONS_ENABLED:
         raise HTTPException(status_code=404, detail="Actions feature not enabled")
 
     # Sprint 60 Phase 2: Workspace isolation enforcement
-    from src.security.workspace import get_authenticated_workspace
+    from relay_ai.security.workspace import get_authenticated_workspace
 
     auth_workspace_id = get_authenticated_workspace(request)
 
@@ -1606,7 +1606,7 @@ async def get_ai_job_status(
 
     # Validate workspace isolation: reject cross-workspace access with 403 (not 404)
     # Use helper for consistency with other endpoints
-    from src.security.workspace import ensure_same_workspace
+    from relay_ai.security.workspace import ensure_same_workspace
 
     job_workspace_id = job_data.get("workspace_id")
     ensure_same_workspace(auth_workspace_id, job_workspace_id)

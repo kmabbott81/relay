@@ -153,7 +153,7 @@ def main():
         sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
         # Import here to avoid circular dependencies
-        from src.queue.persistent_queue import Job  # noqa: E402
+        from relay_ai.queue.persistent_queue import Job  # noqa: E402
 
         # Reset job for replay
         job["status"] = "pending"
@@ -165,7 +165,7 @@ def main():
         job["enqueued_at"] = datetime.now(UTC).isoformat()
 
         # Get queue backend
-        from src.orchestrator.scheduler import get_queue_backend  # noqa: E402
+        from relay_ai.orchestrator.scheduler import get_queue_backend  # noqa: E402
 
         queue = get_queue_backend()
         job_obj = Job.from_dict(job)

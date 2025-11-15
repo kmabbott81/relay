@@ -1,0 +1,444 @@
+# Prometheus Alert Rules for Relay AI
+# Date: 2025-11-15
+# Severity Levels: critical, high, medium, low
+
+groups:
+  - name: api_availability_alerts
+    interval: 15s
+    rules:
+      - alert: APIDown
+        expr: |
+          (
+            count(rate(http_requests_total{environment="beta",status_code=~"2.."}[5m]) > 0)
+            /
+            count(rate(http_requests_total{environment="beta"}[5m]) > 0)
+          ) < 0.5
+        for: 1m
+        severity: critical
+        labels:
+          team: platform
+          component: api
+          runbook: api-down
+        annotations:
+          summary: "API is down - less than 50% requests succeeding"
+          description: "API error rate critical: {{ $value | humanizePercentage }}"
+          dashboard: "https://grafana.internal/d/api-health"
+          action: "Check API logs, database connectivity, and recent deployments"
+
+      - alert: ProdAPIDown
+        expr: |
+          (
+            count(rate(http_requests_total{environment="prod",status_code=~"2.."}[5m]) > 0)
+            /
+            count(rate(http_requests_total{environment="prod"}[5m]) > 0)
+          ) < 0.5
+        for: 1m
+        severity: critical
+        labels:
+          team: platform
+          component: api
+          environment: prod
+          runbook: api-down
+        annotations:
+          summary: "PRODUCTION API DOWN - immediate escalation required"
+          description: "Production error rate: {{ $value | humanizePercentage }}"
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{environment="beta",status_code=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{environment="beta"}[5m]))
+          ) > 0.05
+        for: 5m
+        severity: high
+        labels:
+          team: platform
+          component: api
+          runbook: high-error-rate
+        annotations:
+          summary: "High error rate detected in Beta API"
+          description: "Error rate: {{ $value | humanizePercentage }} (threshold: 5%)"
+          dashboard: "https://grafana.internal/d/api-health"
+
+      - alert: HighClientErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{environment="beta",status_code=~"4.."}[5m]))
+            /
+            sum(rate(http_requests_total{environment="beta"}[5m]))
+          ) > 0.10
+        for: 10m
+        severity: medium
+        labels:
+          team: platform
+          component: api
+        annotations:
+          summary: "High client error rate (4xx)"
+          description: "4xx error rate: {{ $value | humanizePercentage }} (threshold: 10%)"
+          action: "Check API request validation and client compatibility"
+
+  - name: latency_alerts
+    interval: 15s
+    rules:
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{environment="beta"}[5m])) by (le)
+          ) > 0.2
+        for: 10m
+        severity: high
+        labels:
+          team: platform
+          component: api
+          runbook: high-latency
+        annotations:
+          summary: "High P95 latency in Beta API"
+          description: "P95 latency: {{ $value | humanizeDuration }} (target: 200ms)"
+          dashboard: "https://grafana.internal/d/api-performance"
+
+      - alert: HighLatencyP99
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket{environment="beta"}[5m])) by (le)
+          ) > 0.5
+        for: 5m
+        severity: medium
+        labels:
+          team: platform
+          component: api
+        annotations:
+          summary: "High P99 latency"
+          description: "P99 latency: {{ $value | humanizeDuration }}"
+
+      - alert: EndpointSlowResponse
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{environment="beta"}[5m])) by (le, endpoint)
+          ) > 2.0
+        for: 5m
+        severity: medium
+        labels:
+          team: platform
+          component: api
+        annotations:
+          summary: "Endpoint slow response: {{ $labels.endpoint }}"
+          description: "P95 latency: {{ $value | humanizeDuration }} (threshold: 2s)"
+
+  - name: database_alerts
+    interval: 15s
+    rules:
+      - alert: DatabaseConnectionPoolFull
+        expr: |
+          (
+            database_connections_active
+            /
+            database_connections_total
+          ) > 0.8
+        for: 5m
+        severity: high
+        labels:
+          team: data
+          component: database
+          runbook: db-connection-pool
+        annotations:
+          summary: "Database connection pool exceeds 80%"
+          description: "Active: {{ $value | humanizePercentage }} of max"
+          action: "Check for connection leaks or long-running queries"
+
+      - alert: DatabaseConnectionDown
+        expr: |
+          database_connections_active == 0
+        for: 1m
+        severity: critical
+        labels:
+          team: data
+          component: database
+          runbook: db-down
+        annotations:
+          summary: "Database has no active connections"
+          description: "Cannot establish any database connections"
+
+      - alert: SlowQueries
+        expr: |
+          rate(database_slow_queries_total[5m]) > 1
+        for: 5m
+        severity: medium
+        labels:
+          team: data
+          component: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "{{ $value }} slow queries per second (threshold: 1)"
+
+      - alert: DatabaseReplicationLag
+        expr: |
+          database_replication_lag_seconds > 5
+        for: 2m
+        severity: high
+        labels:
+          team: data
+          component: database
+        annotations:
+          summary: "Database replication lag exceeds 5 seconds"
+          description: "Replication lag: {{ $value | humanizeDuration }}"
+
+  - name: resource_alerts
+    interval: 15s
+    rules:
+      - alert: HighMemoryUsage
+        expr: |
+          (process_resident_memory_bytes / 536870912) * 100 > 85
+        for: 5m
+        severity: high
+        labels:
+          team: platform
+          component: api
+          runbook: high-memory
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory: {{ $value | humanizePercentage }} of 512MB max"
+          action: "Monitor for memory leak or increase resource limits"
+
+      - alert: CriticalMemoryUsage
+        expr: |
+          (process_resident_memory_bytes / 536870912) * 100 > 95
+        for: 2m
+        severity: critical
+        labels:
+          team: platform
+          component: api
+        annotations:
+          summary: "CRITICAL: Memory usage at {{ $value | humanizePercentage }}"
+          description: "OOM kill imminent"
+
+      - alert: HighCPUUsage
+        expr: |
+          rate(process_cpu_seconds_total[5m]) > 0.7
+        for: 10m
+        severity: medium
+        labels:
+          team: platform
+          component: api
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU: {{ $value | humanizePercentage }}"
+
+      - alert: DiskUsageHigh
+        expr: |
+          disk_usage_percent > 80
+        for: 5m
+        severity: high
+        labels:
+          team: infra
+          component: storage
+        annotations:
+          summary: "Disk usage exceeds 80%"
+          description: "Disk usage: {{ $value | humanizePercentage }}"
+
+      - alert: DiskUsageCritical
+        expr: |
+          disk_usage_percent > 95
+        for: 1m
+        severity: critical
+        labels:
+          team: infra
+          component: storage
+        annotations:
+          summary: "CRITICAL: Disk almost full"
+          description: "Disk usage: {{ $value | humanizePercentage }}"
+
+  - name: deployment_alerts
+    interval: 15s
+    rules:
+      - alert: DeploymentFailure
+        expr: |
+          (
+            sum(rate(github_workflow_status{status="failure"}[1h]))
+            /
+            sum(rate(github_workflow_status[1h]))
+          ) > 0.05
+        for: 0m
+        severity: high
+        labels:
+          team: devops
+          component: ci-cd
+          runbook: deploy-failure
+        annotations:
+          summary: "Deployment success rate < 95%"
+          description: "Recent failure rate: {{ $value | humanizePercentage }}"
+          dashboard: "https://grafana.internal/d/deployment-health"
+
+      - alert: SmokeTestFailure
+        expr: |
+          deployment_smoke_test_status{status="fail"} > 0
+        for: 0m
+        severity: critical
+        labels:
+          team: devops
+          component: ci-cd
+          runbook: smoke-test-failure
+        annotations:
+          summary: "Post-deployment smoke tests FAILED"
+          description: "Deployment may be broken - investigate immediately"
+          action: "Check smoke test logs and consider rollback"
+
+      - alert: BuildTimeSlow
+        expr: |
+          build_time_seconds > 120
+        for: 2m
+        severity: medium
+        labels:
+          team: devops
+          component: ci-cd
+        annotations:
+          summary: "Build time exceeds 2 minutes"
+          description: "Build time: {{ $value | humanizeDuration }} (target: 60s)"
+
+      - alert: DeploymentRollback
+        expr: |
+          deployment_rollback_count_total > 0
+        for: 0m
+        severity: high
+        labels:
+          team: devops
+          component: ci-cd
+          runbook: investigate-rollback
+        annotations:
+          summary: "Recent deployment rollback detected"
+          description: "{{ $value }} rollback(s) in recent deployments"
+
+  - name: cost_alerts
+    interval: 15s
+    rules:
+      - alert: DailyCostSpike
+        expr: |
+          (
+            daily_cost_usd - daily_cost_usd offset 24h
+          ) > 300
+        for: 5m
+        severity: medium
+        labels:
+          team: finance
+          component: cost-tracking
+        annotations:
+          summary: "Daily cost spike detected"
+          description: "Daily cost increase: +${{ $value }}"
+          action: "Investigate cause of increased usage"
+
+      - alert: MonthlyCostProjection
+        expr: |
+          (monthly_cost_projection_usd / monthly_budget_usd) > 0.9
+        for: 1h
+        severity: medium
+        labels:
+          team: finance
+          component: cost-tracking
+        annotations:
+          summary: "Monthly cost approaching budget"
+          description: "Projected: {{ $value | humanizePercentage }} of budget"
+          action: "Review usage patterns and optimize if needed"
+
+      - alert: TokenBudgetExceeded
+        expr: |
+          llm_tokens_total > 10000000
+        for: 1m
+        severity: medium
+        labels:
+          team: product
+          component: cost-tracking
+        annotations:
+          summary: "Token budget threshold exceeded"
+          description: "Total tokens: {{ $value | humanizeNumber }}"
+
+  - name: user_alerts
+    interval: 15s
+    rules:
+      - alert: ZeroActiveUsers
+        expr: |
+          active_users_total == 0
+        for: 5m
+        severity: high
+        labels:
+          team: product
+          component: analytics
+        annotations:
+          summary: "No active users detected"
+          description: "Expected regular user activity"
+          action: "Check if tracking is working or if service is unavailable"
+
+      - alert: UserErrorRate
+        expr: |
+          (
+            user_error_reporting_rate
+            /
+            active_users_total
+          ) > 0.05
+        for: 10m
+        severity: medium
+        labels:
+          team: product
+          component: quality
+        annotations:
+          summary: "High user-reported error rate"
+          description: "{{ $value | humanizePercentage }} of users reporting errors"
+
+  - name: web_vitals_alerts
+    interval: 15s
+    rules:
+      - alert: HighPageLoadTime
+        expr: |
+          web_page_load_time_seconds{quantile="0.95"} > 3.0
+        for: 10m
+        severity: medium
+        labels:
+          team: frontend
+          component: web
+        annotations:
+          summary: "Web page load time exceeds 3 seconds"
+          description: "P95 load time: {{ $value | humanizeDuration }}"
+          dashboard: "https://grafana.internal/d/web-vitals"
+
+      - alert: LowCacheHitRate
+        expr: |
+          cache_hit_rate < 0.60
+        for: 10m
+        severity: medium
+        labels:
+          team: platform
+          component: cache
+        annotations:
+          summary: "Cache hit rate below 60%"
+          description: "Current hit rate: {{ $value | humanizePercentage }}"
+          action: "Investigate cache eviction or warming strategy"
+
+  - name: infrastructure_alerts
+    interval: 15s
+    rules:
+      - alert: RailwayContainerRestarting
+        expr: |
+          railway_container_restarts_total > 3
+        for: 1m
+        severity: high
+        labels:
+          team: infra
+          component: railway
+        annotations:
+          summary: "Railway container restarting frequently"
+          description: "{{ $value }} restarts in recent history"
+          action: "Check for OOM kills or application crashes"
+
+      - alert: VercelBuildFailure
+        expr: |
+          vercel_build_success_rate < 0.90
+        for: 5m
+        severity: medium
+        labels:
+          team: frontend
+          component: vercel
+        annotations:
+          summary: "Vercel build success rate < 90%"
+          description: "Success rate: {{ $value | humanizePercentage }}"
+
+# Custom alert templates for team-specific routing
+# Can be extended based on team ownership and escalation policies

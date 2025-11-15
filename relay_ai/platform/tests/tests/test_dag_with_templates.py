@@ -36,7 +36,7 @@ def setup_template_system(tmp_path, monkeypatch):
     schema_json.write_text(json.dumps({"fields": {"inbox_items": {"type": "string", "required": True}}}))
 
     # Register template
-    from src.template_registry.registry import register
+    from relay_ai.template_registry.registry import register
 
     register(
         name="test_workflow",

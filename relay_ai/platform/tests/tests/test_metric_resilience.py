@@ -31,7 +31,7 @@ def orchestrator():
 @pytest.mark.anyio
 async def test_metrics_emitted_before_store_mutation(orchestrator: AIOrchestrator):
     """Metrics are emitted BEFORE job store mutation on success."""
-    from src.telemetry import jobs as job_metrics
+    from relay_ai.telemetry import jobs as job_metrics
 
     # Track emission order
     calls = []
@@ -104,7 +104,7 @@ async def test_metrics_emitted_before_store_mutation(orchestrator: AIOrchestrato
 @pytest.mark.anyio
 async def test_metrics_emitted_before_store_error(orchestrator: AIOrchestrator):
     """Metrics are emitted BEFORE job store mutation on error."""
-    from src.telemetry import jobs as job_metrics
+    from relay_ai.telemetry import jobs as job_metrics
 
     # Track emission order
     calls = []

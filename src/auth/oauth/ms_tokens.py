@@ -11,7 +11,7 @@ This module provides Microsoft-specific OAuth token management:
 
 Example usage:
     # Step 1: Generate authorization URL
-    from src.auth.oauth.ms_tokens import build_consent_url
+    from relay_ai.auth.oauth.ms_tokens import build_consent_url
 
     url = build_consent_url(
         workspace_id="ws_123",
@@ -21,7 +21,7 @@ Example usage:
     # Redirect user to `url`
 
     # Step 2: Exchange authorization code for tokens
-    from src.auth.oauth.ms_tokens import exchange_code_for_tokens
+    from relay_ai.auth.oauth.ms_tokens import exchange_code_for_tokens
 
     await exchange_code_for_tokens(
         workspace_id="ws_123",
@@ -31,7 +31,7 @@ Example usage:
     )
 
     # Step 3: Get tokens with auto-refresh
-    from src.auth.oauth.ms_tokens import get_tokens
+    from relay_ai.auth.oauth.ms_tokens import get_tokens
 
     tokens = await get_tokens(workspace_id="ws_123", actor_id="user_456")
     # Use tokens["access_token"] for Graph API calls
@@ -93,7 +93,7 @@ def build_consent_url(
         # Redirect user to result["consent_url"]
         # Store result["state"] for validation
     """
-    from src.auth.oauth.state import OAuthStateManager
+    from relay_ai.auth.oauth.state import OAuthStateManager
 
     # Get Microsoft OAuth credentials
     client_id = os.getenv("MS_CLIENT_ID")
@@ -178,9 +178,9 @@ async def exchange_code_for_tokens(
             state=request.args.get("state")
         )
     """
-    from src.auth.oauth.state import OAuthStateManager
-    from src.auth.oauth.tokens import OAuthTokenCache
-    from src.telemetry import oauth_events
+    from relay_ai.auth.oauth.state import OAuthStateManager
+    from relay_ai.auth.oauth.tokens import OAuthTokenCache
+    from relay_ai.telemetry import oauth_events
 
     # Validate state (CSRF protection)
     state_manager = OAuthStateManager()
@@ -288,7 +288,7 @@ async def get_tokens(workspace_id: str, actor_id: str) -> Optional[dict[str, any
             # Use tokens["access_token"] for Graph API
             graph_client = GraphClient(access_token=tokens["access_token"])
     """
-    from src.auth.oauth.tokens import OAuthTokenCache
+    from relay_ai.auth.oauth.tokens import OAuthTokenCache
 
     token_cache = OAuthTokenCache()
 
@@ -322,8 +322,8 @@ async def _perform_refresh(workspace_id: str, actor_id: str, refresh_token: str)
     Raises:
         MSRefreshError: If refresh fails
     """
-    from src.auth.oauth.tokens import OAuthTokenCache
-    from src.telemetry import oauth_events
+    from relay_ai.auth.oauth.tokens import OAuthTokenCache
+    from relay_ai.telemetry import oauth_events
 
     # Get Microsoft OAuth credentials
     client_id = os.getenv("MS_CLIENT_ID")
@@ -406,8 +406,8 @@ async def revoke_tokens(workspace_id: str, actor_id: str) -> None:
     Example:
         await revoke_tokens("ws_123", "user_456")
     """
-    from src.auth.oauth.tokens import OAuthTokenCache
-    from src.telemetry import oauth_events
+    from relay_ai.auth.oauth.tokens import OAuthTokenCache
+    from relay_ai.telemetry import oauth_events
 
     token_cache = OAuthTokenCache()
     token_cache.delete_tokens(provider="microsoft", workspace_id=workspace_id, actor_id=actor_id)

@@ -171,7 +171,7 @@ def test_execute_action_success_with_admin(index):
 
 def test_message_reply_action(index):
     """Test message.reply action handler."""
-    from src.graph.actions import message_reply
+    from relay_ai.graph.actions import message_reply
 
     resource = index.get("urn:teams:message:msg-123", tenant="test-tenant")
 
@@ -192,7 +192,7 @@ def test_message_reply_action(index):
 
 def test_message_delete_action(index):
     """Test message.delete action handler."""
-    from src.graph.actions import message_delete
+    from relay_ai.graph.actions import message_delete
 
     resource = index.get("urn:teams:message:msg-123", tenant="test-tenant")
 
@@ -208,7 +208,7 @@ def test_message_delete_action(index):
 
 def test_contact_email_action(index):
     """Test contact.email action handler."""
-    from src.graph.actions import contact_email
+    from relay_ai.graph.actions import contact_email
 
     resource = index.get("urn:outlook:contact:contact-456", tenant="test-tenant")
 
@@ -367,11 +367,11 @@ def test_action_error_on_missing_original_id(index):
 
 def test_get_connector_for_each_source():
     """Test _get_connector returns correct connector class."""
-    from src.connectors.gmail import GmailConnector
-    from src.connectors.outlook_api import OutlookConnector
-    from src.connectors.slack import SlackConnector
-    from src.connectors.teams import TeamsConnector
-    from src.graph.actions import _get_connector
+    from relay_ai.connectors.gmail import GmailConnector
+    from relay_ai.connectors.outlook_api import OutlookConnector
+    from relay_ai.connectors.slack import SlackConnector
+    from relay_ai.connectors.teams import TeamsConnector
+    from relay_ai.graph.actions import _get_connector
 
     teams = _get_connector("teams", "test-user", "test-tenant")
     assert isinstance(teams, TeamsConnector)
@@ -388,7 +388,7 @@ def test_get_connector_for_each_source():
 
 def test_get_connector_unknown_source():
     """Test _get_connector raises error for unknown source."""
-    from src.graph.actions import _get_connector
+    from relay_ai.graph.actions import _get_connector
 
     with pytest.raises(ActionError, match="Unknown source connector"):
         _get_connector("unknown-source", "user", "tenant")

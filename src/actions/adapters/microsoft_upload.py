@@ -81,7 +81,7 @@ async def create_draft(access_token: str, message_json: dict[str, Any]) -> tuple
         - outlook_draft_created_total{result="success|error"}
         - outlook_draft_create_seconds
     """
-    from src.telemetry.prom import (
+    from relay_ai.telemetry.prom import (
         outlook_draft_create_seconds,
         outlook_draft_created_total,
     )
@@ -152,7 +152,7 @@ async def create_upload_session(access_token: str, message_id: str, attachment_m
         - outlook_upload_session_total{result="started|error"}
         - outlook_upload_session_create_seconds
     """
-    from src.telemetry.prom import (
+    from relay_ai.telemetry.prom import (
         outlook_upload_session_create_seconds,
         outlook_upload_session_total,
     )
@@ -227,8 +227,8 @@ async def put_chunks(
         - outlook_upload_bytes_total{result="completed|failed"}
         - outlook_upload_session_total{result="completed|failed"}
     """
-    from src.actions.adapters.microsoft_errors import parse_retry_after
-    from src.telemetry.prom import (
+    from relay_ai.actions.adapters.microsoft_errors import parse_retry_after
+    from relay_ai.telemetry.prom import (
         outlook_upload_bytes_total,
         outlook_upload_chunk_seconds,
         outlook_upload_session_total,
@@ -291,7 +291,7 @@ async def put_chunks(
                         # Rate limiting - parse Retry-After header
                         retry_after = parse_retry_after(response.headers.get("Retry-After"))
 
-                        from src.telemetry.prom import record_structured_error
+                        from relay_ai.telemetry.prom import record_structured_error
 
                         record_structured_error(
                             provider="microsoft",
@@ -315,7 +315,7 @@ async def put_chunks(
 
                     elif 500 <= response.status_code < 600:
                         # Server error - exponential backoff
-                        from src.telemetry.prom import record_structured_error
+                        from relay_ai.telemetry.prom import record_structured_error
 
                         record_structured_error(
                             provider="microsoft",
@@ -401,7 +401,7 @@ async def send_draft(access_token: str, message_id: str) -> None:
         - outlook_draft_sent_total{result="success|error"}
         - outlook_draft_send_seconds
     """
-    from src.telemetry.prom import (
+    from relay_ai.telemetry.prom import (
         outlook_draft_send_seconds,
         outlook_draft_sent_total,
     )

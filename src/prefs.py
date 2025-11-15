@@ -68,7 +68,7 @@ def get_prefs(user_id: str, tenant_id: str, principal: Optional[Principal] = Non
             raise PrefsAuthorizationError(f"User {principal.user_id} cannot read prefs in tenant {tenant_id}")
 
     # Import here to avoid circular dependency
-    from src.metadata import get_user_prefs
+    from relay_ai.metadata import get_user_prefs
 
     prefs = get_user_prefs(user_id, tenant_id)
 
@@ -128,7 +128,7 @@ def set_pref(user_id: str, tenant_id: str, key: str, value: Any, principal: Opti
         raise PrefsValidationError(f"Preference {key} exceeds max size {max_size} bytes (got {len(value_str)} bytes)")
 
     # Save to metadata
-    from src.metadata import set_user_pref
+    from relay_ai.metadata import set_user_pref
 
     set_user_pref(user_id, tenant_id, key, value_str)
 
@@ -171,7 +171,7 @@ def delete_pref(user_id: str, tenant_id: str, key: str, principal: Optional[Prin
             raise PrefsAuthorizationError(f"User {principal.user_id} cannot delete prefs in tenant {tenant_id}")
 
     # Delete from metadata
-    from src.metadata import delete_user_pref
+    from relay_ai.metadata import delete_user_pref
 
     delete_user_pref(user_id, tenant_id, key)
 

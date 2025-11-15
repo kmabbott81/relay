@@ -9,7 +9,7 @@ Usage:
         python -m src.config.validate --strict
 
     As a module:
-        from src.config import validate_config
+        from relay_ai.config import validate_config
         success, errors, warnings = validate_config()
 """
 

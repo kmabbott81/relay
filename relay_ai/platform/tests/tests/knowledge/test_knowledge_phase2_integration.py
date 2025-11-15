@@ -57,7 +57,7 @@ class TestFileUploadSecurity:
     @pytest.mark.asyncio
     async def test_upload_missing_jwt_returns_401(self):
         """Test upload without JWT returns 401 Unauthorized"""
-        # from src.knowledge.api import router
+        # from relay_ai.knowledge.api import router
         # client = TestClient(app)
         # response = client.post(
         #     "/api/v2/knowledge/upload",
@@ -377,7 +377,7 @@ class TestAADEncryption:
 
     def test_aad_mismatch_returns_403(self):
         """Test AAD verification failure (cross-user decryption attempt)"""
-        # from src.crypto.envelope import encrypt_with_aad, decrypt_with_aad
+        # from relay_ai.crypto.envelope import encrypt_with_aad, decrypt_with_aad
         # user_a_hash = "user_a_hash"
         # user_b_hash = "user_b_hash"
         # file_id = uuid4()
@@ -426,7 +426,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_error_messages_sanitized(self):
         """Test error messages don't expose file paths, S3 URLs, or internal IDs"""
-        # from src.knowledge.api import sanitize_error_detail
+        # from relay_ai.knowledge.api import sanitize_error_detail
         # unsafe = "File not found at /var/data/user_123/file_456.pdf"
         # safe = sanitize_error_detail(unsafe)
         # assert "/var/data" not in safe

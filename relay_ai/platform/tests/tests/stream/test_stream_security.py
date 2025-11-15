@@ -30,7 +30,7 @@ class TestStreamAuthentication:
     async def test_missing_auth_header_rejected(self):
         """Missing Authorization header should return 401."""
 
-        from src.stream.auth import get_stream_principal
+        from relay_ai.stream.auth import get_stream_principal
 
         request = MagicMock()
         with pytest.raises(HTTPException) as exc:
@@ -40,7 +40,7 @@ class TestStreamAuthentication:
 
     async def test_invalid_bearer_format_rejected(self):
         """Invalid Bearer format should return 401."""
-        from src.stream.auth import get_stream_principal
+        from relay_ai.stream.auth import get_stream_principal
 
         request = MagicMock()
         with pytest.raises(HTTPException) as exc:
@@ -301,7 +301,7 @@ class TestStreamSecurityIntegration:
         """Request without auth should be rejected before streaming."""
         # This would test the full endpoint in a real scenario
         # For now, we test the dependency
-        from src.stream.auth import get_stream_principal
+        from relay_ai.stream.auth import get_stream_principal
 
         request = MagicMock()
         with pytest.raises(HTTPException) as exc:

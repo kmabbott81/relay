@@ -8,8 +8,8 @@ from typing import Any
 
 import streamlit as st
 
-from src.config_ui import to_allowed_models
-from src.templates import (
+from relay_ai.config_ui import to_allowed_models
+from relay_ai.templates import (
     InputDef,
     TemplateRenderError,
     check_budget,
@@ -32,10 +32,10 @@ from src.templates import (
 def _run_once_real(draft_text: str, grounded: bool, local_corpus, cfg: dict[str, Any]):
     """Try real DJP; fallback to select(). Returns (status, provider, text, reason, redaction, usage_rows)."""
     try:
-        from src.corpus import load_corpus
-        from src.debate import run_debate
-        from src.judge import judge_drafts
-        from src.publish import select_publish_text
+        from relay_ai.corpus import load_corpus
+        from relay_ai.debate import run_debate
+        from relay_ai.judge import judge_drafts
+        from relay_ai.publish import select_publish_text
 
         corpus_docs = load_corpus(local_corpus) if grounded else None
         drafts = run_debate(
@@ -85,7 +85,7 @@ def _run_once_real(draft_text: str, grounded: bool, local_corpus, cfg: dict[str,
             pass
         return status, provider, text, reason, redaction, usage_rows
     except Exception:
-        from src.publish import select_publish_text
+        from relay_ai.publish import select_publish_text
 
         status, provider, text, reason, redaction = select_publish_text({"text": draft_text, "grounded": grounded})
         return status, provider, text, reason, redaction, []

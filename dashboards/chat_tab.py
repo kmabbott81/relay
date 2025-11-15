@@ -77,10 +77,10 @@ def _generate_response_mock(prompt: str) -> tuple[str, dict]:
 
 def _generate_response_real(prompt: str, cfg: dict) -> tuple[str, dict]:
     """Generate real response using DJP or chat agent."""
-    from src.config_ui import to_allowed_models
-    from src.debate import run_debate
-    from src.judge import judge_drafts
-    from src.publish import select_publish_text
+    from relay_ai.config_ui import to_allowed_models
+    from relay_ai.debate import run_debate
+    from relay_ai.judge import judge_drafts
+    from relay_ai.publish import select_publish_text
 
     start = time.time()
 

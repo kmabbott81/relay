@@ -85,7 +85,7 @@ def test_drill_connector_not_found(setup_test_env):
 def test_drill_json_output(setup_test_env):
     """Drill outputs valid JSON with --json flag."""
     # Register a connector
-    from src.connectors.registry import register_connector
+    from relay_ai.connectors.registry import register_connector
 
     register_connector("test-conn", "src.connectors.sandbox", "SandboxConnector")
 
@@ -106,8 +106,8 @@ def test_drill_json_output(setup_test_env):
 
 def test_list_healthy_connector(setup_test_env):
     """List shows healthy connector with metrics."""
-    from src.connectors.metrics import record_call
-    from src.connectors.registry import register_connector
+    from relay_ai.connectors.metrics import record_call
+    from relay_ai.connectors.registry import register_connector
 
     # Register connector
     register_connector("test-conn", "src.connectors.sandbox", "SandboxConnector")
@@ -131,8 +131,8 @@ def test_list_healthy_connector(setup_test_env):
 
 def test_list_degraded_connector(setup_test_env):
     """List returns exit code 1 when connector degraded."""
-    from src.connectors.metrics import record_call
-    from src.connectors.registry import register_connector
+    from relay_ai.connectors.metrics import record_call
+    from relay_ai.connectors.registry import register_connector
 
     # Lower threshold for testing
     env = dict(setup_test_env)
@@ -160,8 +160,8 @@ def test_list_degraded_connector(setup_test_env):
 
 def test_drill_shows_recent_failures(setup_test_env):
     """Drill shows recent failures in output."""
-    from src.connectors.metrics import record_call
-    from src.connectors.registry import register_connector
+    from relay_ai.connectors.metrics import record_call
+    from relay_ai.connectors.registry import register_connector
 
     # Register connector
     register_connector("test-conn", "src.connectors.sandbox", "SandboxConnector")

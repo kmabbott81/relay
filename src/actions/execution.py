@@ -134,7 +134,7 @@ class ActionExecutor:
         try:
             import redis
 
-            from src.rollout.minimal_gate import MinimalGate
+            from relay_ai.rollout.minimal_gate import MinimalGate
 
             redis_client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=2)
             redis_client.ping()

@@ -19,7 +19,7 @@ def notion_connector():
     os.environ["CONNECTOR_RBAC_ROLE"] = "Operator"
 
     # Set up team role for RBAC
-    from src.security.teams import upsert_team_member
+    from relay_ai.security.teams import upsert_team_member
 
     upsert_team_member("tenant-1", "user-1", "Admin", "Test Tenant")
 
@@ -253,7 +253,7 @@ def test_delete_block(notion_connector):
 def test_rbac_read_denied(notion_connector):
     """Test RBAC enforcement for reads."""
     # Set role below Operator by updating team membership
-    from src.security.teams import upsert_team_member
+    from relay_ai.security.teams import upsert_team_member
 
     upsert_team_member("tenant-1", "user-1", "Viewer", "Test Tenant")
 
@@ -269,7 +269,7 @@ def test_rbac_read_denied(notion_connector):
 def test_rbac_write_denied(notion_connector):
     """Test RBAC enforcement for writes."""
     # Set role below Admin by updating team membership
-    from src.security.teams import upsert_team_member
+    from relay_ai.security.teams import upsert_team_member
 
     upsert_team_member("tenant-1", "user-1", "Operator", "Test Tenant")
 

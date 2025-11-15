@@ -71,7 +71,7 @@ def render_observability_tab():
     else:
         # Get region configuration
         try:
-            from src.deploy.regions import active_regions, get_primary_region
+            from relay_ai.deploy.regions import active_regions, get_primary_region
 
             regions = active_regions()
             primary = get_primary_region()
@@ -112,9 +112,9 @@ def _render_cost_governance():
         import sys
 
         sys.path.insert(0, str(Path(__file__).parent.parent))
-        from src.cost.anomaly import detect_anomalies
-        from src.cost.budgets import get_global_budget
-        from src.cost.ledger import load_cost_events, rollup, window_sum
+        from relay_ai.cost.anomaly import detect_anomalies
+        from relay_ai.cost.budgets import get_global_budget
+        from relay_ai.cost.ledger import load_cost_events, rollup, window_sum
 
         # Load cost events
         events = load_cost_events(window_days=31)
@@ -154,7 +154,7 @@ def _render_cost_governance():
         if tenant_rollup:
             import pandas as pd
 
-            from src.cost.budgets import get_tenant_budget, is_over_budget
+            from relay_ai.cost.budgets import get_tenant_budget, is_over_budget
 
             table_data = []
             for record in tenant_rollup:
@@ -253,7 +253,7 @@ def _render_approvals():
         import sys
 
         sys.path.insert(0, str(Path(__file__).parent.parent))
-        from src.orchestrator.checkpoints import list_checkpoints
+        from relay_ai.orchestrator.checkpoints import list_checkpoints
 
         # Pending checkpoints
         st.markdown("#### Pending Checkpoints")
@@ -705,8 +705,8 @@ def _render_queue_stats():
         try:
             import redis
 
-            from src.queue.backends.redis import RedisQueue
-            from src.queue.persistent_queue import JobStatus
+            from relay_ai.queue.backends.redis import RedisQueue
+            from relay_ai.queue.persistent_queue import JobStatus
 
             redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
             client = redis.from_url(redis_url, decode_responses=False)
@@ -777,7 +777,7 @@ def _render_orchestrator():
         import sys
 
         sys.path.insert(0, str(Path(__file__).parent.parent))
-        from src.orchestrator.analytics import (
+        from relay_ai.orchestrator.analytics import (
             get_events_path,
             get_state_path,
             load_events,
@@ -958,7 +958,7 @@ def _render_security_panel():
 
         # Keyring info
         try:
-            from src.crypto.keyring import active_key, list_keys
+            from relay_ai.crypto.keyring import active_key, list_keys
 
             keys = list_keys()
             active = active_key()
@@ -1080,8 +1080,8 @@ def _render_governance():
 
         from datetime import datetime
 
-        from src.orchestrator.checkpoints import list_checkpoints
-        from src.security.delegation import list_active_delegations
+        from relay_ai.orchestrator.checkpoints import list_checkpoints
+        from relay_ai.security.delegation import list_active_delegations
 
         # Active delegations
         st.markdown("#### Active Delegations")
@@ -1171,8 +1171,8 @@ def _render_governance():
         st.markdown("#### Team Budgets (Last 24h)")
 
         try:
-            from src.cost.budgets import get_team_budget
-            from src.cost.ledger import load_cost_events, window_sum
+            from relay_ai.cost.budgets import get_team_budget
+            from relay_ai.cost.ledger import load_cost_events, window_sum
 
             events = load_cost_events()
 
@@ -1219,9 +1219,9 @@ def _render_connectors():
         import sys
 
         sys.path.insert(0, str(Path(__file__).parent.parent))
-        from src.connectors.circuit import CircuitBreaker
-        from src.connectors.metrics import health_status
-        from src.connectors.registry import list_enabled_connectors
+        from relay_ai.connectors.circuit import CircuitBreaker
+        from relay_ai.connectors.metrics import health_status
+        from relay_ai.connectors.registry import list_enabled_connectors
 
         # Get enabled connectors
         enabled = list_enabled_connectors()
@@ -1313,8 +1313,8 @@ def _render_unified_graph():
         import sys
 
         sys.path.insert(0, str(Path(__file__).parent.parent))
-        from src.graph.index import get_index
-        from src.graph.search import search
+        from relay_ai.graph.index import get_index
+        from relay_ai.graph.search import search
 
         # Get index stats
         index = get_index()
