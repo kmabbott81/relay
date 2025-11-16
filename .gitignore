@@ -83,3 +83,4 @@ artifacts/**/*.key
 artifacts/**/*credentials*
 .env.canary
 canary*.log
+.env.backup.2025-11-15
