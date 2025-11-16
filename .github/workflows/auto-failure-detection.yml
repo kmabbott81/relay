@@ -1,0 +1,181 @@
+name: Autonomous Failure Detection & Recovery
+
+on:
+  workflow_run:
+    workflows:
+      - "Relay Pipeline CI"
+      - "Deploy to Beta (relay-beta-api)"
+      - "Verify Rotated Credentials"
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  detect-and-respond:
+    name: Detect Failures & Take Action
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'failure'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get workflow run details
+        id: workflow
+        run: |
+          WORKFLOW_NAME="${{ github.event.workflow_run.name }}"
+          WORKFLOW_ID="${{ github.event.workflow_run.id }}"
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          COMMIT_SHA="${{ github.event.workflow_run.head_commit.id }}"
+          COMMIT_MSG="${{ github.event.workflow_run.head_commit.message }}"
+
+          echo "workflow_name=${WORKFLOW_NAME}" >> $GITHUB_OUTPUT
+          echo "workflow_id=${WORKFLOW_ID}" >> $GITHUB_OUTPUT
+          echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
+          echo "commit_sha=${COMMIT_SHA}" >> $GITHUB_OUTPUT
+          echo "commit_msg=${COMMIT_MSG}" >> $GITHUB_OUTPUT
+
+      - name: Fetch workflow logs
+        id: logs
+        run: |
+          gh run view ${{ github.event.workflow_run.id }} --log > /tmp/workflow.log 2>&1 || true
+
+          # Extract error summary (last 50 lines usually have the error)
+          tail -100 /tmp/workflow.log > /tmp/error_summary.txt
+
+          # Check for common errors
+          if grep -q "ModuleNotFoundError\|ImportError" /tmp/error_summary.txt; then
+            echo "error_type=import_error" >> $GITHUB_OUTPUT
+          elif grep -q "ConnectionError\|Connection refused" /tmp/error_summary.txt; then
+            echo "error_type=connection_error" >> $GITHUB_OUTPUT
+          elif grep -q "timeout\|timed out" /tmp/error_summary.txt; then
+            echo "error_type=timeout_error" >> $GITHUB_OUTPUT
+          elif grep -q "AssertionError\|assert" /tmp/error_summary.txt; then
+            echo "error_type=assertion_error" >> $GITHUB_OUTPUT
+          else
+            echo "error_type=other" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Create diagnostic issue
+        id: issue
+        run: |
+          TITLE="🔴 ${{ steps.workflow.outputs.workflow_name }} failed on ${{ steps.workflow.outputs.branch }}"
+
+          BODY=$(cat << 'EOF'
+          ## Workflow Failure Detected
+
+          **Workflow:** ${{ steps.workflow.outputs.workflow_name }}
+          **Branch:** ${{ steps.workflow.outputs.branch }}
+          **Commit:** [${{ steps.workflow.outputs.commit_sha }}](https://github.com/${{ github.repository }}/commit/${{ steps.workflow.outputs.commit_sha }})
+          **Error Type:** ${{ steps.logs.outputs.error_type }}
+
+          ### Commit Message
+          ```
+          ${{ steps.workflow.outputs.commit_msg }}
+          ```
+
+          ### Quick Links
+          - [View Full Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})
+          - [View Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/attempts/1)
+
+          ### Error Summary
+          ```
+          $(tail -30 /tmp/error_summary.txt || echo "Unable to extract error")
+          ```
+
+          ### Suggested Actions
+
+          #### For Import Errors
+          - Verify all Python modules are properly installed
+          - Check that relay_ai.* import paths are correct (nested structure)
+          - Run: `python -m pip install -e ".[dev]"`
+
+          #### For Connection Errors
+          - Check that Railway/Supabase are running and accessible
+          - Verify RELAY_BETA_DB_URL secret is set correctly
+          - Test connection: `python -c "import psycopg2; psycopg2.connect('<db_url>')"`
+
+          #### For Timeout Errors
+          - Check network connectivity
+          - Increase timeout values if needed
+          - Retry the workflow manually
+
+          ### Status
+          - [ ] Issue created automatically
+          - [ ] Awaiting triage/investigation
+          - [ ] Fix in progress
+          - [ ] Resolved
+
+          ---
+
+          *This issue was automatically created by GitHub Actions. React with ❓ to get more details or 🔧 to auto-retry.*
+          EOF
+          )
+
+          # Create issue using gh
+          ISSUE_URL=$(gh issue create \
+            --title "${TITLE}" \
+            --body "${BODY}" \
+            --label "failure" \
+            --label "${{ steps.logs.outputs.error_type }}" \
+            2>&1 | grep "https://github.com")
+
+          echo "issue_url=${ISSUE_URL}" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Auto-retry for transient failures
+        if: steps.logs.outputs.error_type == 'timeout_error' || steps.logs.outputs.error_type == 'connection_error'
+        run: |
+          echo "Transient error detected. Queuing retry for workflow ${{ steps.workflow.outputs.workflow_name }}"
+
+          # Get the workflow file
+          WORKFLOW_FILE=$(gh run view ${{ github.event.workflow_run.id }} --json workflowName -q '.workflowName' | tr ' ' '-' | tr '[:upper:]' '[:lower:]').yml
+
+          # Trigger workflow retry after 30 seconds
+          sleep 30
+          gh workflow run "${WORKFLOW_FILE}" -r ${{ steps.workflow.outputs.branch }} || true
+
+          echo "Workflow retry triggered for transient failure"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Notify on critical failures
+        if: failure() || (steps.logs.outputs.error_type != 'timeout_error' && steps.logs.outputs.error_type != 'connection_error')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '@kmabbott81 ⚠️ Critical failure detected requiring manual investigation. See GitHub Issue for details.'
+            });
+
+  monitor-failure-age:
+    name: Monitor Unresolved Failures
+    runs-on: ubuntu-latest
+    # Run daily to track long-standing failures
+    if: github.event_name == 'schedule' || github.event.schedule == '0 9 * * *'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for old unresolved failures
+        run: |
+          gh issue list \
+            --label "failure" \
+            --state open \
+            --json number,title,createdAt \
+            --jq '.[] | select(.createdAt | fromdate | now - . > 86400) | .number' | \
+            while read issue_num; do
+              echo "Found unresolved failure: Issue #${issue_num}"
+              gh issue comment "${issue_num}" \
+                --body "⏰ This failure has been open for more than 24 hours. Escalating for priority review."
+            done
+        env:
+          GH_TOKEN: ${{ github.token }}
