@@ -39,6 +39,9 @@ from relay_ai.platform.api.auth_router import router as auth_router
 
 # Import routers via adapters (production-proven code)
 from relay_ai.platform.api.knowledge import close_pool, init_pool, knowledge_router
+
+# MVP Chat Console for beta testing
+from relay_ai.platform.api.mvp_router import router as mvp_router
 from relay_ai.platform.api.security_router import router as security_router
 from relay_ai.platform.api.teams_router import router as teams_router
 
@@ -47,6 +50,9 @@ from relay_ai.platform.security.startup_checks import enforce_fail_closed
 
 # Enforce fail-closed security configuration on module load
 enforce_fail_closed()
+
+# Imports below must happen after import redirect - E402 warnings are expected
+# ruff: noqa: E402
 
 # Add repo root to sys.path for RequestID middleware import
 
@@ -192,6 +198,13 @@ app.include_router(
     teams_router,
     prefix="/teams",
     tags=["Teams (Stub)"],
+)
+
+# MVP Chat Console (beta testing interface)
+app.include_router(
+    mvp_router,
+    prefix="/mvp",
+    tags=["MVP Console"],
 )
 
 # ==============================================================================
