@@ -1,11 +1,8 @@
 name: Docker Build and Push
 
 on:
-  push:
-    branches: [main, master]
-    tags: ['v*']
-  pull_request:
-    branches: [main, master]
+  # Disabled - Docker build not needed for current development
+  # Re-enable when ready for container deployments
   workflow_dispatch:
 
 env:

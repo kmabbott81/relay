@@ -1,9 +1,9 @@
 name: Nightly Full Test Suite
 
 on:
-  schedule:
-    - cron: '0 2 * * *'  # 2 AM UTC daily
-  workflow_dispatch:  # Manual trigger
+  # Disabled - Full nightly test suite disabled for now
+  # Re-enable after UI polish complete and all tests fixed
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
   full-test:

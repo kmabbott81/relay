@@ -1,9 +1,9 @@
 name: Monthly Integration Docs Audit
 
 on:
-  schedule:
-    - cron: '0 15 1 * *'  # 1st of month at 15:00 UTC
-  workflow_dispatch:  # Allow manual trigger
+  # Disabled - Integration docs audit disabled for now
+  # Re-enable after UI polish complete
+  workflow_dispatch:  # Allow manual trigger only
 
 jobs:
   audit:

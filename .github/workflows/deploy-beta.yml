@@ -2,7 +2,7 @@ name: Deploy to Beta (relay-beta-api)
 
 on:
   push:
-    branches: [beta]
+    branches: [main]
     paths:
       - 'relay_ai/**'
       - 'Dockerfile'
