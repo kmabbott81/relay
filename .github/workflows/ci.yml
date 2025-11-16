@@ -30,7 +30,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: .pytest_cache
-        key: pytest-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('tests/**/*.py') }}
+        key: pytest-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('relay_ai/platform/tests/tests/**/*.py') }}
         restore-keys: |
           pytest-${{ runner.os }}-${{ matrix.python-version }}-
 
@@ -49,7 +49,7 @@ jobs:
 
     - name: Run unit tests (fast subset)
       run: |
-        python -m pytest tests/ -v --ignore=tests_e2e -m "not slow and not integration and not requires_streamlit and not needs_artifacts and not port_conflict and not api_mismatch and not bizlogic_asserts" -n auto || python -m pytest tests/ -v --ignore=tests_e2e -m "not slow and not integration and not requires_streamlit and not needs_artifacts and not port_conflict and not api_mismatch and not bizlogic_asserts"
+        python -m pytest relay_ai/platform/tests/tests/ -v --ignore=relay_ai/platform/tests/tests/e2e -m "not slow and not integration and not requires_streamlit and not needs_artifacts and not port_conflict and not api_mismatch and not bizlogic_asserts" -n auto || python -m pytest relay_ai/platform/tests/tests/ -v --ignore=relay_ai/platform/tests/tests/e2e -m "not slow and not integration and not requires_streamlit and not needs_artifacts and not port_conflict and not api_mismatch and not bizlogic_asserts"
 
     - name: Run e2e smoke tests
       run: |
