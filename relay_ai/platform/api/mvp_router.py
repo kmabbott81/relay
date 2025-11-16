@@ -8,7 +8,6 @@ Mounted at /mvp on the beta API.
 import logging
 import os
 from datetime import datetime
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
@@ -59,30 +58,181 @@ async def serve_mvp_console():
 
     This is a simple web interface for testing the beta API with GPT and Claude.
     """
-    # Read the simple_ui.html file
-    html_path = Path(__file__).parent.parent.parent.parent / "simple_ui.html"
+    # Embedded HTML to avoid file path issues in Docker
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Relay MVP - Beta Testing</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 20px;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                overflow: hidden;
+            }
+            .header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 30px;
+                text-align: center;
+            }
+            .header h1 { font-size: 28px; margin-bottom: 10px; }
+            .header p { font-size: 14px; opacity: 0.9; }
+            .content { padding: 30px; }
+            .form-group { margin-bottom: 20px; }
+            label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+            textarea, select {
+                width: 100%;
+                padding: 12px;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                font-size: 14px;
+                font-family: inherit;
+            }
+            textarea { resize: vertical; min-height: 100px; }
+            .btn {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                padding: 12px 30px;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: transform 0.2s;
+            }
+            .btn:hover { transform: translateY(-2px); }
+            .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+            .response {
+                margin-top: 20px;
+                padding: 20px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                border-left: 4px solid #667eea;
+            }
+            .response h3 { margin-bottom: 10px; color: #667eea; }
+            .response pre {
+                background: white;
+                padding: 15px;
+                border-radius: 6px;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+            .error { border-left-color: #dc3545; }
+            .error h3 { color: #dc3545; }
+            .loading { text-align: center; padding: 20px; color: #667eea; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🚀 Relay MVP - Beta Testing</h1>
+                <p>Test your beta API with GPT and Claude</p>
+            </div>
+            <div class="content">
+                <div class="form-group">
+                    <label for="message">Message</label>
+                    <textarea id="message" placeholder="Enter your message here...">Hello! Can you help me test this API?</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="model">AI Model</label>
+                    <select id="model">
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                        <option value="gpt-4">GPT-4</option>
+                        <option value="claude-3-haiku">Claude 3 Haiku</option>
+                        <option value="multi">Compare Both (Multi-AI)</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="sendMessage()">Send Message</button>
+                <div id="response"></div>
+            </div>
+        </div>
+        <script>
+            const API_URL = window.location.origin + '/mvp';
 
-    if not html_path.exists():
-        return HTMLResponse(
-            content=f"""
-            <html>
-                <head><title>MVP Console Not Found</title></head>
-                <body>
-                    <h1>MVP Console</h1>
-                    <p>simple_ui.html not found. Expected at: {html_path}</p>
-                </body>
-            </html>
-            """,
-            status_code=404,
-        )
+            async function sendMessage() {
+                const message = document.getElementById('message').value;
+                const model = document.getElementById('model').value;
+                const responseDiv = document.getElementById('response');
 
-    # Read and return the HTML
-    html_content = html_path.read_text()
+                if (!message.trim()) {
+                    alert('Please enter a message');
+                    return;
+                }
 
-    # Replace localhost API_URL with window.location.origin + /mvp
-    html_content = html_content.replace(
-        "const API_URL = 'http://localhost:8000';", "const API_URL = window.location.origin + '/mvp';"
-    )
+                responseDiv.innerHTML = '<div class="loading">⏳ Sending request...</div>';
+
+                try {
+                    const endpoint = model === 'multi' ? `${API_URL}/multi-chat` : `${API_URL}/chat`;
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            message: message,
+                            model: model === 'multi' ? 'gpt-3.5-turbo' : model,
+                            user_id: 'beta-tester',
+                            session_id: 'test-session'
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+
+                    let html = '<div class="response">';
+
+                    if (model === 'multi' && data.responses) {
+                        html += '<h3>📊 Multi-AI Responses</h3>';
+                        for (const [modelName, modelResponse] of Object.entries(data.responses)) {
+                            html += `<h4>${modelName}</h4><pre>${escapeHtml(modelResponse)}</pre>`;
+                        }
+                    } else {
+                        html += `<h3>✅ ${data.model}</h3>`;
+                        html += `<pre>${escapeHtml(data.response)}</pre>`;
+                        if (data.tokens_used) {
+                            html += `<p style="margin-top: 10px; color: #666; font-size: 12px;">Tokens used: ${data.tokens_used}</p>`;
+                        }
+                    }
+
+                    html += '</div>';
+                    responseDiv.innerHTML = html;
+
+                } catch (error) {
+                    responseDiv.innerHTML = `<div class="response error"><h3>❌ Error</h3><pre>${escapeHtml(error.message)}</pre></div>`;
+                }
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // Allow Enter to send (Shift+Enter for new line)
+            document.getElementById('message').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        </script>
+    </body>
+    </html>
+    """
 
     return HTMLResponse(content=html_content)
 
