@@ -54,6 +54,8 @@ numpy==1.26.4
     # CI Stabilization: Pinned to 1.26.4 for Python 3.9+ compatibility (2.x requires >=3.11)
 openai==1.61.0
     # via -r requirements.in
+anthropic==0.42.0
+    # via -r requirements.in (for MVP chat console)
 pandas==2.1.4
     # via -r requirements.in
     # CI Stabilization: Pinned to 2.1.4 for Python 3.9+ compatibility (2.2+ requires >=3.11)
