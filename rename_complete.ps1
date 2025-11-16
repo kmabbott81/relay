@@ -96,20 +96,7 @@ Write-Host ""
 
 git add -A
 
-$commitMessage = @"
-docs: Update repository name references from djp-workflow to relay
-
-Updated all documentation references to reflect repository rename:
-- pyproject.toml URLs (homepage, docs, repository, issues)
-- README.md clone instructions and CI badge
-- CONTRIBUTING.md setup guide
-- CHANGELOG.md release links
-- Developer documentation files
-
-No functional code changes. Old URLs redirect automatically via GitHub.
-
-GitHub Repo Rename: kmabbott81/djp-workflow → kmabbott81/relay
-"@
+$commitMessage = "docs: Update repository name references from djp-workflow to relay`n`nUpdated all documentation references to reflect repository rename:`npyproject.toml URLs (homepage, docs, repository, issues)`nREADME.md clone instructions and CI badge`nCONTRIBUTING.md setup guide`nCHANGELOG.md release links`nDeveloper documentation files`n`nNo functional code changes. Old URLs redirect automatically via GitHub.`n`nGitHub Repo Rename: kmabbott81/djp-workflow → kmabbott81/relay"
 
 git commit -m $commitMessage
 
@@ -121,38 +108,7 @@ Write-Host ""
 Write-Host "Creating Pull Request..." -ForegroundColor Yellow
 Write-Host ""
 
-$prBody = @"
-## Summary
-
-Repository renamed: **djp-workflow → relay**
-
-This PR updates all documentation to reflect the new repository name.
-
-## Changes
-- ``pyproject.toml`` - Updated URLs (homepage, documentation, repository, issues)
-- ``README.md`` - Updated clone URL and CI badge
-- ``CONTRIBUTING.md`` - Updated setup instructions
-- ``CHANGELOG.md`` - Updated release links
-- Developer documentation files
-
-## Impact
-- ✅ No functional code changes
-- ✅ No breaking changes for users
-- ✅ Old URLs redirect automatically via GitHub
-- ✅ All deployments (Railway, Vercel) continue working
-
-## Testing
-- [x] Verified old GitHub URLs redirect to new URLs
-- [x] Tested git clone with new URL
-- [x] Verified GitHub Actions workflows auto-updated
-- [x] Railway/Vercel deployments unaffected
-
----
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
-"@
+$prBody = "## Summary`n`nRepository renamed: **djp-workflow → relay**`n`nThis PR updates all documentation to reflect the new repository name.`n`n## Changes`npyproject.toml - Updated URLs (homepage, documentation, repository, issues)`nREADME.md - Updated clone URL and CI badge`nCONTRIBUTING.md - Updated setup instructions`nCHANGELOG.md - Updated release links`nDeveloper documentation files`n`n## Impact`n✅ No functional code changes`n✅ No breaking changes for users`n✅ Old URLs redirect automatically via GitHub`n✅ All deployments (Railway, Vercel) continue working`n`n## Testing`n[x] Verified old GitHub URLs redirect to new URLs`n[x] Tested git clone with new URL`n[x] Verified GitHub Actions workflows auto-updated`n[x] Railway/Vercel deployments unaffected`n`n---`n`n🤖 Generated with Claude Code (https://claude.com/claude-code)`n`nCo-Authored-By: Claude <noreply@anthropic.com>"`
 
 gh pr create `
   --title "docs: Update repository name references (djp-workflow → relay)" `
