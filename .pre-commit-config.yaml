@@ -55,6 +55,7 @@ default_language_version:
 exclude: |
   (?x)^(
       \.git/|
+      \.archive/|
       \.mypy_cache/|
       \.pytest_cache/|
       \.venv/|
