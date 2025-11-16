@@ -35,7 +35,6 @@ COPY scripts/ ./scripts/
 COPY pyproject.toml ./
 COPY README.md ./
 COPY LICENSE ./
-COPY simple_ui.html ./
 
 # Create runtime directories if needed
 RUN mkdir -p /app/logs /app/artifacts /app/runs
