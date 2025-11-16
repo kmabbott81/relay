@@ -21,7 +21,7 @@ jobs:
       - name: Check health endpoint
         id: health
         run: |
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://relay-production-f2a6.up.railway.app/_stcore/health)
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://relay-beta-api.railway.app/health)
 
           if [ "$HTTP_CODE" != "200" ]; then
             echo "❌ Health check failed with HTTP $HTTP_CODE"
@@ -30,24 +30,20 @@ jobs:
 
           echo "✅ Health check passed (HTTP $HTTP_CODE)"
 
-      - name: Check metrics endpoint
-        id: metrics
+      - name: Check API response time
+        id: performance
         run: |
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://relay-production-f2a6.up.railway.app/metrics)
+          RESPONSE_TIME=$(curl -s -o /dev/null -w "%{time_total}" https://relay-beta-api.railway.app/health)
 
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "⚠️ Metrics endpoint returned HTTP $HTTP_CODE"
-            exit 1
+          # Convert to milliseconds
+          RESPONSE_MS=$(echo "$RESPONSE_TIME * 1000" | bc)
+
+          echo "✅ API response time: ${RESPONSE_MS}ms"
+
+          # Warn if response time > 1 second
+          if (( $(echo "$RESPONSE_TIME > 1" | bc -l) )); then
+            echo "⚠️ Warning: Response time is slower than expected (>1s)"
           fi
-
-          # Verify Prometheus format
-          CONTENT=$(curl -s https://relay-production-f2a6.up.railway.app/metrics | head -n 5)
-          if ! echo "$CONTENT" | grep -q "# HELP"; then
-            echo "⚠️ Metrics endpoint not returning Prometheus format"
-            exit 1
-          fi
-
-          echo "✅ Metrics endpoint healthy"
 
       - name: Create failure issue
         if: failure()
@@ -72,8 +68,8 @@ jobs:
 
             ### Quick Diagnosis
             \`\`\`bash
-            curl -I https://relay-production-f2a6.up.railway.app/_stcore/health
-            curl https://relay-production-f2a6.up.railway.app/metrics | head -n 20
+            curl https://relay-beta-api.railway.app/health
+            curl -I https://relay-beta-api.railway.app/health
             \`\`\`
 
             [View workflow run](${context.payload.repository.html_url}/actions/runs/${context.runId})
