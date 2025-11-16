@@ -154,7 +154,7 @@ def encrypt_with_aad(plaintext: bytes, aad: bytes, keyring_key: dict) -> dict:
 
     Example:
         >>> from relay_ai.crypto.keyring import active_key
-        >>> from relay_ai.memory.rls import hmac_user
+        >>> from relay_ai.platform.security.memory.rls import hmac_user
         >>> key = active_key()
         >>> user_hash = hmac_user("user_123")
         >>> envelope = encrypt_with_aad(
@@ -212,7 +212,7 @@ def decrypt_with_aad(envelope: dict, aad: bytes, keyring_get_fn: Any = None) -> 
 
     Example:
         >>> from relay_ai.crypto.keyring import active_key
-        >>> from relay_ai.memory.rls import hmac_user
+        >>> from relay_ai.platform.security.memory.rls import hmac_user
         >>> key = active_key()
         >>> user_hash = hmac_user("user_123")
         >>> envelope = encrypt_with_aad(

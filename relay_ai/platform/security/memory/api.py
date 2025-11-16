@@ -21,9 +21,9 @@ from relay_ai.crypto.envelope import (
     encrypt_with_aad,  # noqa: F401 - Phase 3 test dep
     get_aad_from_user_hash,
 )
-from relay_ai.memory.metrics import get_default_collector
-from relay_ai.memory.rls import hmac_user
-from relay_ai.memory.schemas import (
+from relay_ai.platform.security.memory.metrics import get_default_collector
+from relay_ai.platform.security.memory.rls import hmac_user
+from relay_ai.platform.security.memory.schemas import (
     EntitiesRequest,
     EntitiesResponse,
     Entity,
@@ -36,7 +36,7 @@ from relay_ai.memory.schemas import (
     SummarizeRequest,
     SummarizeResponse,
 )
-from relay_ai.stream.auth import verify_supabase_jwt  # Existing JWT verifier
+from relay_ai.platform.api.stream.auth import verify_supabase_jwt  # Existing JWT verifier
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ import logging
 from typing import Optional
 
 try:
-    from relay_ai.memory.metrics import get_default_collector
+    from relay_ai.platform.security.memory.metrics import get_default_collector
 except ImportError:
     get_default_collector = None
 

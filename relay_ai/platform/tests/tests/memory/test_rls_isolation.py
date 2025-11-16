@@ -19,7 +19,7 @@ import asyncpg
 import pytest
 
 # Import RLS module
-from relay_ai.memory.rls import (
+from relay_ai.platform.security.memory.rls import (
     MEMORY_TENANT_HMAC_KEY,
     RLSMiddlewareContext,
     clear_rls_session_variable,
@@ -356,7 +356,7 @@ class TestRegressionSuite:
     def test_hmac_consistency_across_imports(self):
         """Hash should be consistent when imported in different ways"""
         from relay_ai.memory import rls
-        from relay_ai.memory.rls import hmac_user as hmac_import1
+        from relay_ai.platform.security.memory.rls import hmac_user as hmac_import1
 
         hmac_import2 = rls.hmac_user
 

@@ -17,8 +17,8 @@ import pytest
 os.environ["MEMORY_ENCRYPTION_KEY"] = "ZGV2LWVuY3J5cHRpb24ta2V5LTMyYnl0ZXMxMjM0NTY="
 os.environ["MEMORY_TENANT_HMAC_KEY"] = "dev-hmac-key-for-testing-1234567890"
 
-from relay_ai.memory.rls import hmac_user
-from relay_ai.memory.security import InvalidTag, open_sealed, seal
+from relay_ai.platform.security.memory.rls import hmac_user
+from relay_ai.platform.security.memory.security import InvalidTag, open_sealed, seal
 
 
 # Mock Database connection for testing

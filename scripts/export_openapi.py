@@ -3,7 +3,7 @@ import json
 
 from fastapi import FastAPI
 
-from relay_ai.memory.api import router as memory_router
+from relay_ai.platform.security.memory.api import router as memory_router
 
 # Create minimal FastAPI app
 app = FastAPI(

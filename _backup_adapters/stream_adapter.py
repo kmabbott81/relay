@@ -19,7 +19,7 @@ if str(REPO_ROOT) not in sys.path:
 # Import Stream API auth and JWT functions from src/stream
 # These are production-proven R1 modules. Do NOT modify.
 try:
-    from relay_ai.stream.auth import (
+    from relay_ai.platform.api.stream.auth import (
         StreamPrincipal,
         check_jwt_and_get_user_hash,
         generate_anon_session_token,

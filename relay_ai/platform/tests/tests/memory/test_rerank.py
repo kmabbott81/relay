@@ -26,7 +26,7 @@ class TestCrossEncoderInit:
     @pytest.mark.skip(reason="Requires GPU/torch - integration test only")
     def test_get_cross_encoder_loads_model(self):
         """Cross-encoder model loads on first call"""
-        from relay_ai.memory.rerank import get_cross_encoder
+        from relay_ai.platform.security.memory.rerank import get_cross_encoder
 
         model = get_cross_encoder()
         assert model is not None
@@ -34,7 +34,7 @@ class TestCrossEncoderInit:
     @pytest.mark.skip(reason="Requires GPU/torch - integration test only")
     def test_get_cross_encoder_caches_model(self):
         """Subsequent calls return cached instance"""
-        from relay_ai.memory.rerank import get_cross_encoder
+        from relay_ai.platform.security.memory.rerank import get_cross_encoder
 
         model1 = get_cross_encoder()
         model2 = get_cross_encoder()
@@ -47,7 +47,7 @@ class TestReranking:
     @pytest.mark.asyncio
     async def test_rerank_empty_candidates(self):
         """Empty candidates returns empty list"""
-        from relay_ai.memory.rerank import rerank
+        from relay_ai.platform.security.memory.rerank import rerank
 
         result = await rerank("query", [])
         assert result == []
@@ -55,7 +55,7 @@ class TestReranking:
     @pytest.mark.asyncio
     async def test_rerank_single_candidate(self):
         """Single candidate returns as-is"""
-        from relay_ai.memory.rerank import RerankedResult, rerank
+        from relay_ai.platform.security.memory.rerank import RerankedResult, rerank
 
         result = await rerank("query", ["candidate"])
         assert len(result) == 1
@@ -66,7 +66,7 @@ class TestReranking:
     @pytest.mark.asyncio
     async def test_rerank_sorts_by_relevance(self):
         """Reranking sorts candidates by relevance"""
-        from relay_ai.memory.rerank import rerank
+        from relay_ai.platform.security.memory.rerank import rerank
 
         query = "How do I reset my password?"
         candidates = [
@@ -84,7 +84,7 @@ class TestReranking:
     @pytest.mark.asyncio
     async def test_rerank_latency_budget(self):
         """p95 latency < 150ms for 24 candidates (PERFORMANCE GATE)"""
-        from relay_ai.memory.rerank import rerank
+        from relay_ai.platform.security.memory.rerank import rerank
 
         query = "test query"
         candidates = [f"candidate {i}" for i in range(24)]
@@ -107,7 +107,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_rerank_timeout_returns_ann_order(self):
         """Timeout exceeded → returns ANN order (fail-open)"""
-        from relay_ai.memory.rerank import rerank
+        from relay_ai.platform.security.memory.rerank import rerank
 
         # Mock get_cross_encoder to hang
         with patch("src.memory.rerank.get_cross_encoder") as mock_get:
@@ -127,7 +127,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_circuit_breaker_threshold(self):
         """Circuit breaker activates at correct timeout"""
-        from relay_ai.memory.rerank import rerank
+        from relay_ai.platform.security.memory.rerank import rerank
 
         candidates = ["candidate_1", "candidate_2"]
 
@@ -153,7 +153,7 @@ class TestFeatureFlag:
 
         importlib.reload(src.memory.rerank)
 
-        from relay_ai.memory.rerank import maybe_rerank
+        from relay_ai.platform.security.memory.rerank import maybe_rerank
 
         candidates = ["candidate_1", "candidate_2"]
         result = await maybe_rerank("query", candidates)
@@ -174,7 +174,7 @@ class TestFeatureFlag:
 
         importlib.reload(src.memory.rerank)
 
-        from relay_ai.memory.rerank import maybe_rerank
+        from relay_ai.platform.security.memory.rerank import maybe_rerank
 
         candidates = ["candidate_1", "candidate_2"]
         result = await maybe_rerank("query", candidates)
@@ -188,7 +188,7 @@ class TestMetrics:
 
     def test_get_rerank_metrics(self):
         """Metrics dict contains required fields"""
-        from relay_ai.memory.rerank import get_rerank_metrics
+        from relay_ai.platform.security.memory.rerank import get_rerank_metrics
 
         metrics = get_rerank_metrics()
 
@@ -200,7 +200,7 @@ class TestMetrics:
 
     def test_metrics_device_detection(self):
         """Metrics reports correct device"""
-        from relay_ai.memory.rerank import get_rerank_metrics
+        from relay_ai.platform.security.memory.rerank import get_rerank_metrics
 
         metrics = get_rerank_metrics()
 
@@ -214,7 +214,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_rerank_with_model_error(self):
         """Model errors return ANN order (fail-open)"""
-        from relay_ai.memory.rerank import rerank
+        from relay_ai.platform.security.memory.rerank import rerank
 
         candidates = ["candidate_1", "candidate_2"]
 
@@ -230,7 +230,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_maybe_rerank_error_handling(self):
         """maybe_rerank catches all errors and returns ANN order"""
-        from relay_ai.memory.rerank import maybe_rerank
+        from relay_ai.platform.security.memory.rerank import maybe_rerank
 
         candidates = ["candidate_1", "candidate_2"]
 
@@ -248,7 +248,7 @@ class TestRerankedResult:
 
     def test_reranked_result_creation(self):
         """RerankedResult can be created and accessed"""
-        from relay_ai.memory.rerank import RerankedResult
+        from relay_ai.platform.security.memory.rerank import RerankedResult
 
         result = RerankedResult("test candidate", 0.95, 5)
 
@@ -258,7 +258,7 @@ class TestRerankedResult:
 
     def test_reranked_result_repr(self):
         """RerankedResult has readable repr"""
-        from relay_ai.memory.rerank import RerankedResult
+        from relay_ai.platform.security.memory.rerank import RerankedResult
 
         result = RerankedResult("test candidate text is long", 0.95, 5)
         repr_str = repr(result)

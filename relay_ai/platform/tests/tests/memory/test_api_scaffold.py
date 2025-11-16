@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from relay_ai.memory.api import router
+from relay_ai.platform.security.memory.api import router
 
 # ============================================================================
 # Fixtures
@@ -319,13 +319,13 @@ class TestFeatureFlags:
 
     def test_rerank_enabled_constant(self):
         """Test that RERANK_ENABLED is defined."""
-        from relay_ai.memory.api import RERANK_ENABLED
+        from relay_ai.platform.security.memory.api import RERANK_ENABLED
 
         assert isinstance(RERANK_ENABLED, bool)
 
     def test_rerank_timeout_ms_defined(self):
         """Test that RERANK_TIMEOUT_MS is defined and reasonable."""
-        from relay_ai.memory.api import RERANK_TIMEOUT_MS
+        from relay_ai.platform.security.memory.api import RERANK_TIMEOUT_MS
 
         assert RERANK_TIMEOUT_MS == 250
 
