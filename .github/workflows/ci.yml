@@ -1,4 +1,4 @@
-name: DJP Pipeline CI
+name: Relay Pipeline CI
 
 on:
   push:
@@ -83,7 +83,7 @@ jobs:
       with:
         context: .
         file: docker/Dockerfile.app
-        tags: djp-workflow-app:latest
+        tags: relay-app:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
         push: false
@@ -93,7 +93,7 @@ jobs:
       with:
         context: .
         file: docker/Dockerfile.worker
-        tags: djp-workflow-worker:latest
+        tags: relay-worker:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
         push: false

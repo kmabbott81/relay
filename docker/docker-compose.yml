@@ -1,4 +1,4 @@
-# DJP Workflow Platform - Development Stack
+# Relay Platform - Development Stack
 # Services: app (dashboard/API), worker (queue processor), redis (message broker)
 # Volumes: logs, artifacts, audit data
 # Network: Internal bridge network for service communication
@@ -9,8 +9,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
-    container_name: djp-app
-    hostname: djp-app
+    container_name: relay-app
+    hostname: relay-app
     ports:
       - "8501:8501"  # Streamlit dashboard
       - "8080:8080"  # Health check server
@@ -42,7 +42,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - djp-network
+      - relay-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/ready"]
@@ -51,16 +51,16 @@ services:
       retries: 3
       start_period: 15s
     labels:
-      - "com.djp.service=app"
-      - "com.djp.version=1.0"
+      - "com.relay.service=app"
+      - "com.relay.version=1.0"
 
   # Worker service: Queue processor for job execution
   worker:
     build:
       context: ..
       dockerfile: docker/Dockerfile.worker
-    container_name: djp-worker-1
-    hostname: djp-worker-1
+    container_name: relay-worker-1
+    hostname: relay-worker-1
     env_file:
       - ../.env  # Load environment variables from project root
     environment:
@@ -90,7 +90,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - djp-network
+      - relay-network
     restart: unless-stopped
     healthcheck:
       test: |
@@ -101,14 +101,14 @@ services:
       retries: 3
       start_period: 20s
     labels:
-      - "com.djp.service=worker"
-      - "com.djp.version=1.0"
+      - "com.relay.service=worker"
+      - "com.relay.version=1.0"
 
   # Redis service: Message broker and queue backend
   redis:
     image: redis:7-alpine
-    container_name: djp-redis
-    hostname: djp-redis
+    container_name: relay-redis
+    hostname: relay-redis
     command: redis-server --appendonly yes --appendfsync everysec --maxmemory 512mb --maxmemory-policy allkeys-lru
     ports:
       - "6379:6379"  # Expose for local development/debugging
@@ -116,7 +116,7 @@ services:
       # Persist Redis data
       - redis-data:/data
     networks:
-      - djp-network
+      - relay-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -125,26 +125,26 @@ services:
       retries: 5
       start_period: 10s
     labels:
-      - "com.djp.service=redis"
-      - "com.djp.version=7"
+      - "com.relay.service=redis"
+      - "com.relay.version=7"
 
 # Named volumes for persistent data
 volumes:
   redis-data:
     driver: local
     labels:
-      - "com.djp.volume=redis-data"
+      - "com.relay.volume=redis-data"
   worker-tmp:
     driver: local
     labels:
-      - "com.djp.volume=worker-tmp"
+      - "com.relay.volume=worker-tmp"
 
 # Internal network for service communication
 networks:
-  djp-network:
+  relay-network:
     driver: bridge
     labels:
-      - "com.djp.network=main"
+      - "com.relay.network=main"
 
 # Usage:
 # 1. Development: docker-compose up

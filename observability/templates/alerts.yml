@@ -21,7 +21,7 @@ groups:
         annotations:
           summary: "Light endpoint p99 latency exceeds 50ms"
           description: "The p99 latency for light endpoints (list/preview/audit) is {{ $value }}s, which exceeds the 50ms SLO target. Check for slow database queries or increased load."
-          runbook_url: "https://github.com/kmabbott81/djp-workflow/blob/main/docs/observability/SLOs.md#1-light-endpoints-listpreview---latency"
+          runbook_url: "https://github.com/kmabbott81/relay/blob/main/docs/observability/SLOs.md#1-light-endpoints-listpreview---latency"
 
       - alert: WebhookExecuteLatencyHigh
         expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{path="/actions/execute"}[5m])) > 1.2
@@ -32,7 +32,7 @@ groups:
         annotations:
           summary: "Webhook execute p95 latency exceeds 1.2s"
           description: "The p95 latency for webhook executions is {{ $value }}s, which exceeds the 1.2s SLO target. Check webhook receiver latency or network issues."
-          runbook_url: "https://github.com/kmabbott81/djp-workflow/blob/main/docs/observability/SLOs.md#2-webhook-execute---latency"
+          runbook_url: "https://github.com/kmabbott81/relay/blob/main/docs/observability/SLOs.md#2-webhook-execute---latency"
 
       - alert: ActionsErrorRateHigh
         expr: (sum(rate(http_requests_total{path=~"/actions.*", status=~"5.."}[5m])) / sum(rate(http_requests_total{path=~"/actions.*"}[5m]))) > 0.01
@@ -43,7 +43,7 @@ groups:
         annotations:
           summary: "Actions API error rate exceeds 1%"
           description: "The 5xx error rate for /actions endpoints is {{ $value | humanizePercentage }}, which exceeds the 1% SLO target. Check logs for exceptions and consider rollback if recent deploy."
-          runbook_url: "https://github.com/kmabbott81/djp-workflow/blob/main/docs/observability/SLOs.md#3-error-rate"
+          runbook_url: "https://github.com/kmabbott81/relay/blob/main/docs/observability/SLOs.md#3-error-rate"
 
       - alert: HighErrorStreak
         expr: (sum(rate(http_requests_total{status=~"5.."}[1m])) / sum(rate(http_requests_total[1m]))) > 0.10
@@ -54,7 +54,7 @@ groups:
         annotations:
           summary: "Sustained high error rate - immediate action required"
           description: "The overall 5xx error rate is {{ $value | humanizePercentage }} (>10%) for 3+ minutes. This indicates a severe outage. Page on-call engineer immediately."
-          runbook_url: "https://github.com/kmabbott81/djp-workflow/blob/main/docs/observability/SLOs.md#3-error-rate"
+          runbook_url: "https://github.com/kmabbott81/relay/blob/main/docs/observability/SLOs.md#3-error-rate"
 
       - alert: RateLimitBreaches
         expr: rate(rate_limit_breaches_total[10m]) > 0
@@ -76,7 +76,7 @@ groups:
         annotations:
           summary: "Relay backend service is down"
           description: "The Relay backend service has been unreachable for 1+ minutes. Health checks are failing. Check Railway dashboard and logs immediately."
-          runbook_url: "https://github.com/kmabbott81/djp-workflow/blob/main/docs/observability/SLOs.md#4-availability"
+          runbook_url: "https://github.com/kmabbott81/relay/blob/main/docs/observability/SLOs.md#4-availability"
 
       - alert: DatabaseConnectionPoolExhausted
         expr: db_connection_pool_active / db_connection_pool_max > 0.9
@@ -87,7 +87,7 @@ groups:
         annotations:
           summary: "Database connection pool near capacity"
           description: "Database connection pool is at {{ $value | humanizePercentage }} capacity. Consider increasing pool size or optimizing query patterns."
-          runbook_url: "https://github.com/kmabbott81/djp-workflow/blob/main/docs/observability/SLOs.md"
+          runbook_url: "https://github.com/kmabbott81/relay/blob/main/docs/observability/SLOs.md"
 
       - alert: RedisDown
         expr: redis_up == 0

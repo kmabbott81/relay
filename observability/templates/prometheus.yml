@@ -3,10 +3,10 @@ global:
   evaluation_interval: 15s
   external_labels:
     environment: 'staging'
-    cluster: 'djp-workflow'
+    cluster: 'relay'
 
 scrape_configs:
-  - job_name: 'djp-workflow-staging'
+  - job_name: 'relay-staging'
     metrics_path: '/metrics'
     scheme: https
     static_configs:
