@@ -73,8 +73,15 @@ async def init_schema() -> None:
     NOTE: This is for Phase 2/3 Knowledge API. Phase 1 MVP doesn't use these tables.
     Gracefully degrades if tables don't exist yet.
     """
-    conn = await get_connection()
+    # Skip schema initialization if pool is not available (MVP Phase 1 doesn't need this)
+    if not _pool:
+        logger.debug("Skipping schema initialization - database pool not available (expected for MVP Phase 1)")
+        return
+
+    conn = None
     try:
+        conn = await get_connection()
+
         # Enable RLS on files table (if it exists)
         try:
             await conn.execute("ALTER TABLE files ENABLE ROW LEVEL SECURITY")
@@ -108,7 +115,8 @@ async def init_schema() -> None:
         logger.error(f"Schema initialization error: {e}")
     finally:
         # CRITICAL: Release connection back to pool (not close)
-        await _pool.release(conn)
+        if conn and _pool:
+            await _pool.release(conn)
 
 
 async def set_rls_context(conn: asyncpg.Connection, user_hash: str) -> None:
