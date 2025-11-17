@@ -1,13 +1,11 @@
 import os
 from logging.config import fileConfig
 
-# Sprint 53: Load .env file for local development
-from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-load_dotenv()
+# Note: dotenv not needed in production - DATABASE_URL comes from Railway env vars
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

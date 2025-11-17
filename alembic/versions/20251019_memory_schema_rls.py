@@ -31,8 +31,15 @@ def upgrade():
     - Partial indexes scoped to user_hash
     """
 
-    # Enable pgvector extension if not already enabled
-    op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+    # Enable pgvector extension if not already enabled (gracefully handle if not installed)
+    try:
+        op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+    except Exception as e:
+        # pgvector not installed on this Postgres instance - log warning but continue
+        # This is expected on Railway Postgres which doesn't include pgvector by default
+        import logging
+
+        logging.warning(f"Could not create pgvector extension: {e}")
 
     # Create memory_chunks table
     op.create_table(
@@ -88,34 +95,52 @@ def upgrade():
     # Create partial HNSW index for efficient ANN search within user's chunks
     # This index only includes rows matching current_setting('app.user_hash')
     # so each user's index is separate
-    op.execute(
+    # NOTE: Requires pgvector extension - skip if not available
+    try:
+        op.execute(
+            """
+            CREATE INDEX idx_memory_chunks_embedding_hnsw
+            ON memory_chunks USING hnsw (embedding vector_cosine_ops)
+            WHERE user_hash IS NOT NULL;
         """
-        CREATE INDEX idx_memory_chunks_embedding_hnsw
-        ON memory_chunks USING hnsw (embedding vector_cosine_ops)
-        WHERE user_hash IS NOT NULL;
-    """
-    )
+        )
+    except Exception as e:
+        import logging
+
+        logging.warning(f"Could not create HNSW index (pgvector required): {e}")
 
     # Create partial IVFFlat index as alternative (for very large deployments)
     # Can switch between HNSW/IVFFlat via query hints or runtime parameter
-    op.execute(
+    # NOTE: Requires pgvector extension - skip if not available
+    try:
+        op.execute(
+            """
+            CREATE INDEX idx_memory_chunks_embedding_ivfflat
+            ON memory_chunks USING ivfflat (embedding vector_cosine_ops)
+            WHERE user_hash IS NOT NULL
+            WITH (lists = 100);
         """
-        CREATE INDEX idx_memory_chunks_embedding_ivfflat
-        ON memory_chunks USING ivfflat (embedding vector_cosine_ops)
-        WHERE user_hash IS NOT NULL
-        WITH (lists = 100);
-    """
-    )
+        )
+    except Exception as e:
+        import logging
+
+        logging.warning(f"Could not create IVFFlat index (pgvector required): {e}")
 
     # Create index on (user_hash, embedding) for scoped searches
     # Helps PostgreSQL select the right subset before ANN computation
-    op.execute(
+    # NOTE: Requires pgvector extension - skip if not available
+    try:
+        op.execute(
+            """
+            CREATE INDEX idx_memory_chunks_user_embedding
+            ON memory_chunks (user_hash, (embedding <-> '{0.1,0.2,0.3,...}'::vector))
+            WHERE user_hash IS NOT NULL;
         """
-        CREATE INDEX idx_memory_chunks_user_embedding
-        ON memory_chunks (user_hash, (embedding <-> '{0.1,0.2,0.3,...}'::vector))
-        WHERE user_hash IS NOT NULL;
-    """
-    )
+        )
+    except Exception as e:
+        import logging
+
+        logging.warning(f"Could not create user embedding index (pgvector required): {e}")
 
 
 def downgrade():
