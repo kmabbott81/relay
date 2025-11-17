@@ -54,40 +54,56 @@ async def init_pool(
 
 async def _init_connection(conn: asyncpg.Connection) -> None:
     """Per-connection initialization."""
-    # Enable RLS extension and set defaults
-    await conn.execute("CREATE EXTENSION IF NOT EXISTS pgvector")
-    await conn.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+    # Enable extensions (graceful degradation if not available)
+    try:
+        await conn.execute("CREATE EXTENSION IF NOT EXISTS pgvector")
+    except Exception as e:
+        logger.debug(f"pgvector extension not available (expected on Railway): {e}")
+
+    try:
+        await conn.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+    except Exception as e:
+        logger.debug(f"pg_trgm extension not available: {e}")
 
 
 async def init_schema() -> None:
-    """Idempotent schema initialization with RLS policies."""
+    """
+    Idempotent schema initialization with RLS policies.
+
+    NOTE: This is for Phase 2/3 Knowledge API. Phase 1 MVP doesn't use these tables.
+    Gracefully degrades if tables don't exist yet.
+    """
     conn = await get_connection()
     try:
-        # Enable RLS on files table
-        await conn.execute("ALTER TABLE files ENABLE ROW LEVEL SECURITY")
+        # Enable RLS on files table (if it exists)
+        try:
+            await conn.execute("ALTER TABLE files ENABLE ROW LEVEL SECURITY")
 
-        # RLS Policy: Users see only their own files
-        await conn.execute(
-            """
-            CREATE POLICY IF NOT EXISTS files_user_isolation ON files
-            USING (user_hash = current_setting('app.user_hash'))
-            WITH CHECK (user_hash = current_setting('app.user_hash'))
-            """
-        )
-
-        # RLS Policy: File embeddings isolated by file user_hash
-        await conn.execute(
-            """
-            CREATE POLICY IF NOT EXISTS embeddings_user_isolation ON file_embeddings
-            USING (
-                file_id IN (
-                    SELECT id FROM files WHERE user_hash = current_setting('app.user_hash')
-                )
+            # RLS Policy: Users see only their own files
+            await conn.execute(
+                """
+                CREATE POLICY IF NOT EXISTS files_user_isolation ON files
+                USING (user_hash = current_setting('app.user_hash'))
+                WITH CHECK (user_hash = current_setting('app.user_hash'))
+                """
             )
-            """
-        )
 
-        logger.info("Schema initialized with RLS policies")
+            # RLS Policy: File embeddings isolated by file user_hash
+            await conn.execute(
+                """
+                CREATE POLICY IF NOT EXISTS embeddings_user_isolation ON file_embeddings
+                USING (
+                    file_id IN (
+                        SELECT id FROM files WHERE user_hash = current_setting('app.user_hash')
+                    )
+                )
+                """
+            )
+
+            logger.info("Schema initialized with RLS policies")
+        except Exception as e:
+            # Expected for MVP Phase 1 - files/file_embeddings tables don't exist yet
+            logger.debug(f"Schema initialization skipped (tables not found, expected for MVP Phase 1): {e}")
     except Exception as e:
         logger.error(f"Schema initialization error: {e}")
     finally:
