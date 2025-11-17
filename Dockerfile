@@ -32,6 +32,8 @@ ENV PATH=/root/.local/bin:$PATH
 # Copy application code
 COPY relay_ai/ ./relay_ai/
 COPY scripts/ ./scripts/
+COPY alembic/ ./alembic/
+COPY alembic.ini ./
 COPY pyproject.toml ./
 COPY README.md ./
 COPY LICENSE ./
