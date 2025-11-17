@@ -37,7 +37,8 @@ async def get_default_user_id() -> uuid.UUID:
         logger.info(f"Default MVP user loaded: Kyle ({_default_user_id})")
         return _default_user_id
     finally:
-        await _pool.release(conn)
+        if conn and _pool:
+            await _pool.release(conn)
 
 
 async def create_thread(user_id: uuid.UUID, title: Optional[str] = None) -> uuid.UUID:
@@ -57,7 +58,8 @@ async def create_thread(user_id: uuid.UUID, title: Optional[str] = None) -> uuid
         logger.info(f"Created thread {thread_id} for user {user_id}")
         return thread_id
     finally:
-        await _pool.release(conn)
+        if conn and _pool:
+            await _pool.release(conn)
 
 
 async def get_thread(thread_id: uuid.UUID) -> Optional[dict]:
@@ -74,7 +76,8 @@ async def get_thread(thread_id: uuid.UUID) -> Optional[dict]:
         )
         return dict(row) if row else None
     finally:
-        await _pool.release(conn)
+        if conn and _pool:
+            await _pool.release(conn)
 
 
 async def list_threads(user_id: uuid.UUID, limit: int = 50) -> list[dict]:
@@ -94,7 +97,8 @@ async def list_threads(user_id: uuid.UUID, limit: int = 50) -> list[dict]:
         )
         return [dict(row) for row in rows]
     finally:
-        await _pool.release(conn)
+        if conn and _pool:
+            await _pool.release(conn)
 
 
 async def create_message(
@@ -132,7 +136,8 @@ async def create_message(
         logger.debug(f"Created message {message_id} in thread {thread_id}")
         return message_id
     finally:
-        await _pool.release(conn)
+        if conn and _pool:
+            await _pool.release(conn)
 
 
 async def list_messages(thread_id: uuid.UUID) -> list[dict]:
@@ -150,7 +155,8 @@ async def list_messages(thread_id: uuid.UUID) -> list[dict]:
         )
         return [dict(row) for row in rows]
     finally:
-        await _pool.release(conn)
+        if conn and _pool:
+            await _pool.release(conn)
 
 
 async def verify_thread_ownership(thread_id: uuid.UUID, user_id: uuid.UUID) -> bool:
@@ -160,4 +166,5 @@ async def verify_thread_ownership(thread_id: uuid.UUID, user_id: uuid.UUID) -> b
         row = await conn.fetchrow("SELECT 1 FROM mvp_threads WHERE id = $1 AND user_id = $2", thread_id, user_id)
         return row is not None
     finally:
-        await _pool.release(conn)
+        if conn and _pool:
+            await _pool.release(conn)
