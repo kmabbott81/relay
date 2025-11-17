@@ -8,10 +8,14 @@ Mounted at /mvp on the beta API.
 import logging
 import os
 from datetime import datetime
+from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+
+from relay_ai.platform.api import mvp_db
 
 # Initialize OpenAI and Anthropic clients
 try:
@@ -39,8 +43,9 @@ router = APIRouter()
 class ChatRequest(BaseModel):
     message: str
     model: str = "gpt-3.5-turbo"
-    user_id: str = "beta-tester"
-    session_id: str = "default"
+    user_id: Optional[UUID] = None
+    thread_id: Optional[UUID] = None
+    session_id: str = "default"  # kept for backward compatibility
 
 
 class ChatResponse(BaseModel):
@@ -48,6 +53,7 @@ class ChatResponse(BaseModel):
     model: str
     timestamp: str
     tokens_used: int = 0
+    thread_id: Optional[UUID] = None
 
 
 @router.get("", response_class=HTMLResponse, include_in_schema=False)
@@ -162,6 +168,9 @@ async def serve_mvp_console():
         <script>
             const API_URL = window.location.origin + '/mvp';
 
+            // Load current thread ID from localStorage
+            let currentThreadId = localStorage.getItem('currentThreadId') || null;
+
             async function sendMessage() {
                 const message = document.getElementById('message').value;
                 const model = document.getElementById('model').value;
@@ -176,15 +185,22 @@ async def serve_mvp_console():
 
                 try {
                     const endpoint = model === 'multi' ? `${API_URL}/multi-chat` : `${API_URL}/chat`;
+
+                    // Include thread_id if it exists
+                    const requestBody = {
+                        message: message,
+                        model: model === 'multi' ? 'gpt-3.5-turbo' : model,
+                        session_id: 'test-session'
+                    };
+
+                    if (currentThreadId) {
+                        requestBody.thread_id = currentThreadId;
+                    }
+
                     const response = await fetch(endpoint, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            message: message,
-                            model: model === 'multi' ? 'gpt-3.5-turbo' : model,
-                            user_id: 'beta-tester',
-                            session_id: 'test-session'
-                        })
+                        body: JSON.stringify(requestBody)
                     });
 
                     if (!response.ok) {
@@ -192,6 +208,12 @@ async def serve_mvp_console():
                     }
 
                     const data = await response.json();
+
+                    // Store thread_id from response
+                    if (data.thread_id) {
+                        currentThreadId = data.thread_id;
+                        localStorage.setItem('currentThreadId', currentThreadId);
+                    }
 
                     let html = '<div class="response">';
 
@@ -243,7 +265,43 @@ async def chat(request: ChatRequest):
     Single AI chat endpoint.
 
     Sends a message to either OpenAI or Anthropic based on the model specified.
+    Persists conversation to database if DATABASE_URL is configured.
     """
+    # Check if database is available
+    db_available = os.getenv("DATABASE_URL") is not None
+
+    # Get user_id (default to Kyle if not provided)
+    user_id = request.user_id
+    if not user_id and db_available:
+        try:
+            user_id = await mvp_db.get_default_user_id()
+        except Exception as e:
+            logging.warning(f"Failed to get default user_id: {e}")
+            db_available = False
+
+    # Handle thread_id: create new thread if not provided
+    thread_id = request.thread_id
+    if db_available and user_id and not thread_id:
+        try:
+            # Create thread title from first ~80 chars of message
+            title = request.message[:80] + "..." if len(request.message) > 80 else request.message
+            thread_id = await mvp_db.create_thread(user_id, title)
+        except Exception as e:
+            logging.warning(f"Failed to create thread: {e}")
+            db_available = False
+
+    # Insert user message to database
+    if db_available and user_id and thread_id:
+        try:
+            await mvp_db.create_message(
+                thread_id=thread_id,
+                user_id=user_id,
+                role="user",
+                content=request.message,
+            )
+        except Exception as e:
+            logging.warning(f"Failed to insert user message: {e}")
+
     # Determine which AI to use based on model
     if "claude" in request.model.lower():
         # Use Anthropic/Claude
@@ -259,6 +317,11 @@ async def chat(request: ChatRequest):
             )
             ai_response = response.content[0].text
             tokens_used = response.usage.input_tokens + response.usage.output_tokens
+            token_usage_json = {
+                "input_tokens": response.usage.input_tokens,
+                "output_tokens": response.usage.output_tokens,
+                "total_tokens": tokens_used,
+            }
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Claude API error: {str(e)}") from e
     else:
@@ -278,11 +341,34 @@ async def chat(request: ChatRequest):
             )
             ai_response = response.choices[0].message.content
             tokens_used = response.usage.total_tokens
+            token_usage_json = {
+                "prompt_tokens": response.usage.prompt_tokens,
+                "completion_tokens": response.usage.completion_tokens,
+                "total_tokens": tokens_used,
+            }
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(e)}") from e
 
+    # Insert assistant message to database
+    if db_available and user_id and thread_id:
+        try:
+            await mvp_db.create_message(
+                thread_id=thread_id,
+                user_id=user_id,
+                role="assistant",
+                content=ai_response,
+                model_name=request.model,
+                token_usage_json=token_usage_json,
+            )
+        except Exception as e:
+            logging.warning(f"Failed to insert assistant message: {e}")
+
     return ChatResponse(
-        response=ai_response, model=request.model, timestamp=datetime.now().isoformat(), tokens_used=tokens_used
+        response=ai_response,
+        model=request.model,
+        timestamp=datetime.now().isoformat(),
+        tokens_used=tokens_used,
+        thread_id=thread_id,
     )
 
 
@@ -292,21 +378,78 @@ async def multi_chat(request: ChatRequest):
     Multi-AI chat endpoint.
 
     Gets responses from both OpenAI and Anthropic simultaneously for comparison.
+    Persists both responses to database if DATABASE_URL is configured.
     """
+    # Check if database is available
+    db_available = os.getenv("DATABASE_URL") is not None
+
+    # Get user_id (default to Kyle if not provided)
+    user_id = request.user_id
+    if not user_id and db_available:
+        try:
+            user_id = await mvp_db.get_default_user_id()
+        except Exception as e:
+            logging.warning(f"Failed to get default user_id: {e}")
+            db_available = False
+
+    # Handle thread_id: create new thread if not provided
+    thread_id = request.thread_id
+    if db_available and user_id and not thread_id:
+        try:
+            # Create thread title from first ~80 chars of message
+            title = "[Multi-AI] " + (request.message[:70] + "..." if len(request.message) > 70 else request.message)
+            thread_id = await mvp_db.create_thread(user_id, title)
+        except Exception as e:
+            logging.warning(f"Failed to create thread: {e}")
+            db_available = False
+
+    # Insert user message to database (only once for multi-chat)
+    if db_available and user_id and thread_id:
+        try:
+            await mvp_db.create_message(
+                thread_id=thread_id,
+                user_id=user_id,
+                role="user",
+                content=request.message,
+            )
+        except Exception as e:
+            logging.warning(f"Failed to insert user message: {e}")
+
     responses = {}
 
     # Try GPT-3.5
     if openai_client:
         try:
-            gpt_response = await chat(
-                ChatRequest(
-                    message=request.message,
-                    model="gpt-3.5-turbo",
-                    user_id=request.user_id,
-                    session_id=f"{request.session_id}-multi-gpt",
-                )
+            response = openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are Relay, a helpful AI assistant."},
+                    {"role": "user", "content": request.message},
+                ],
+                max_tokens=1000,
+                temperature=0.7,
             )
-            responses["gpt-3.5-turbo"] = gpt_response.response
+            ai_response = response.choices[0].message.content
+            tokens_used = response.usage.total_tokens
+            responses["gpt-3.5-turbo"] = ai_response
+
+            # Insert GPT assistant message to database
+            if db_available and user_id and thread_id:
+                try:
+                    await mvp_db.create_message(
+                        thread_id=thread_id,
+                        user_id=user_id,
+                        role="assistant",
+                        content=ai_response,
+                        model_name="gpt-3.5-turbo",
+                        token_usage_json={
+                            "prompt_tokens": response.usage.prompt_tokens,
+                            "completion_tokens": response.usage.completion_tokens,
+                            "total_tokens": tokens_used,
+                        },
+                    )
+                except Exception as e:
+                    logging.warning(f"Failed to insert GPT assistant message: {e}")
         except Exception as e:
             responses["gpt-3.5-turbo"] = f"Error: {str(e)}"
     else:
@@ -315,18 +458,113 @@ async def multi_chat(request: ChatRequest):
     # Try Claude
     if anthropic_client:
         try:
-            claude_response = await chat(
-                ChatRequest(
-                    message=request.message,
-                    model="claude-3-haiku",
-                    user_id=request.user_id,
-                    session_id=f"{request.session_id}-multi-claude",
-                )
+            response = anthropic_client.messages.create(
+                model="claude-3-haiku-20240307",
+                max_tokens=1000,
+                temperature=0.7,
+                messages=[{"role": "user", "content": request.message}],
             )
-            responses["claude-3-haiku"] = claude_response.response
+            ai_response = response.content[0].text
+            tokens_used = response.usage.input_tokens + response.usage.output_tokens
+            responses["claude-3-haiku"] = ai_response
+
+            # Insert Claude assistant message to database
+            if db_available and user_id and thread_id:
+                try:
+                    await mvp_db.create_message(
+                        thread_id=thread_id,
+                        user_id=user_id,
+                        role="assistant",
+                        content=ai_response,
+                        model_name="claude-3-haiku",
+                        token_usage_json={
+                            "input_tokens": response.usage.input_tokens,
+                            "output_tokens": response.usage.output_tokens,
+                            "total_tokens": tokens_used,
+                        },
+                    )
+                except Exception as e:
+                    logging.warning(f"Failed to insert Claude assistant message: {e}")
         except Exception as e:
             responses["claude-3-haiku"] = f"Error: {str(e)}"
     else:
         responses["claude-3-haiku"] = "Anthropic not configured"
 
-    return {"timestamp": datetime.now().isoformat(), "responses": responses}
+    return {"timestamp": datetime.now().isoformat(), "responses": responses, "thread_id": thread_id}
+
+
+@router.get("/threads")
+async def list_user_threads(user_id: Optional[UUID] = None):
+    """
+    List conversation threads for a user.
+
+    Returns threads ordered by most recent activity first.
+    """
+    if not os.getenv("DATABASE_URL"):
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    # Get user_id (default to Kyle if not provided)
+    if not user_id:
+        try:
+            user_id = await mvp_db.get_default_user_id()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to get default user: {str(e)}") from e
+
+    try:
+        threads = await mvp_db.list_threads(user_id)
+        # Convert datetime objects to ISO format strings
+        for thread in threads:
+            thread["created_at"] = thread["created_at"].isoformat()
+            thread["updated_at"] = thread["updated_at"].isoformat()
+            thread["id"] = str(thread["id"])
+            thread["user_id"] = str(thread["user_id"])
+        return {"threads": threads}
+    except Exception as e:
+        logging.error(f"Failed to list threads: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list threads: {str(e)}") from e
+
+
+@router.get("/threads/{thread_id}/messages")
+async def list_thread_messages(thread_id: UUID, user_id: Optional[UUID] = None):
+    """
+    List messages in a conversation thread.
+
+    Returns messages in chronological order.
+    Verifies thread ownership before returning messages.
+    """
+    if not os.getenv("DATABASE_URL"):
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    # Get user_id (default to Kyle if not provided)
+    if not user_id:
+        try:
+            user_id = await mvp_db.get_default_user_id()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to get default user: {str(e)}") from e
+
+    try:
+        # Verify thread exists
+        thread = await mvp_db.get_thread(thread_id)
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        # Verify ownership
+        is_owner = await mvp_db.verify_thread_ownership(thread_id, user_id)
+        if not is_owner:
+            raise HTTPException(status_code=403, detail="You do not have access to this thread")
+
+        # Get messages
+        messages = await mvp_db.list_messages(thread_id)
+        # Convert datetime and UUID objects to strings
+        for message in messages:
+            message["created_at"] = message["created_at"].isoformat()
+            message["id"] = str(message["id"])
+            message["thread_id"] = str(message["thread_id"])
+            message["user_id"] = str(message["user_id"])
+
+        return {"messages": messages}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Failed to list messages: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list messages: {str(e)}") from e
