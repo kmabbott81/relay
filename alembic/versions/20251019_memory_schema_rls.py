@@ -29,19 +29,19 @@ def upgrade():
     - Encryption columns for text/metadata/shadow embeddings
     - Plaintext embedding for ANN indexing
     - Partial indexes scoped to user_hash
+
+    NOTE: This migration is SKIPPED on Railway Postgres which doesn't support pgvector.
+    The memory_chunks table is not needed for MVP Phase 1.
     """
 
-    # Enable pgvector extension if not already enabled (gracefully handle if not installed)
-    try:
-        op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
-    except Exception as e:
-        # pgvector not installed on this Postgres instance - log warning but continue
-        # This is expected on Railway Postgres which doesn't include pgvector by default
-        import logging
+    # Skip this entire migration if pgvector is not available
+    # This table is not needed for MVP Phase 1 (only mvp_users/threads/messages are needed)
+    import logging
 
-        logging.warning(f"Could not create pgvector extension: {e}")
+    logging.info("Skipping memory_chunks table creation - not needed for MVP Phase 1")
+    return
 
-    # Create memory_chunks table
+    # Create memory_chunks table (DISABLED - not needed for MVP Phase 1)
     op.create_table(
         "memory_chunks",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
