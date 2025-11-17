@@ -4,6 +4,7 @@ PORT="${PORT:-8000}"
 export RELAY_ENV="${RELAY_ENV:-production}"
 
 # Run database migrations if DATABASE_URL is set
+# Force redeploy to pick up DATABASE_URL environment variable
 if [ -n "$DATABASE_URL" ]; then
     echo "Running Alembic migrations..."
     python -m alembic upgrade head || echo "Migration failed or already up to date"
