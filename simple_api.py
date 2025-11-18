@@ -4,7 +4,9 @@ This actually works, unlike the complex setup.
 """
 
 import json
+import logging
 import os
+import re
 import sqlite3
 from datetime import datetime
 
@@ -16,8 +18,40 @@ from fastapi.responses import StreamingResponse
 from openai import OpenAI
 from pydantic import BaseModel
 
+# Import centralized model configuration
+from models_config import DEFAULT_MODEL, validate_and_resolve
+
 # Load environment variables
 load_dotenv()
+
+# Configure logging infrastructure
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("relay_api.log"), logging.StreamHandler()],
+)
+
+
+# Redact sensitive data from logs
+class SensitiveDataFilter(logging.Filter):
+    """Filter out API keys and sensitive tokens from logs."""
+
+    REDACT_PATTERNS = [
+        r"(sk-[a-zA-Z0-9]{48})",  # OpenAI keys
+        r"(sk-ant-[a-zA-Z0-9-]{95})",  # Anthropic keys
+        r"(Bearer [a-zA-Z0-9._-]+)",  # JWT tokens
+    ]
+
+    def filter(self, record):
+        for pattern in self.REDACT_PATTERNS:
+            record.msg = re.sub(pattern, "[REDACTED]", str(record.msg))
+        return True
+
+
+# Apply filter to all handlers
+logger = logging.getLogger(__name__)
+for handler in logger.handlers:
+    handler.addFilter(SensitiveDataFilter())
 
 # Create FastAPI app
 app = FastAPI(
@@ -96,7 +130,7 @@ init_db()
 # Request/Response models
 class ChatRequest(BaseModel):
     message: str
-    model: str = "gpt-3.5-turbo"
+    model: str = DEFAULT_MODEL  # Logical model key: "gpt-fast", "gpt-strong", "claude-fast", "claude-strong"
     user_id: str = "demo-user"
     session_id: str = "default"
     stream: bool = False
@@ -177,15 +211,22 @@ def health_check():
 async def chat(request: ChatRequest):
     """Main chat endpoint - send a message, get a response"""
 
-    # Determine which AI to use based on model
-    if "claude" in request.model.lower():
+    # Validate and resolve logical model key to provider and actual model ID
+    try:
+        provider, model_id, config = validate_and_resolve(request.model)
+    except ValueError as e:
+        logger.warning(f"Invalid model key in chat request: {repr(request.model)[:50]}")
+        raise HTTPException(status_code=400, detail="Invalid model key") from e
+
+    # Route to appropriate provider
+    if provider == "anthropic":
         # Use Anthropic/Claude
         if not anthropic_client:
             raise HTTPException(status_code=500, detail="Anthropic API key not configured")
 
         try:
             response = anthropic_client.messages.create(
-                model="claude-3-haiku-20240307",  # Fast and cheap model
+                model=model_id,
                 max_tokens=1000,
                 temperature=0.7,
                 messages=[{"role": "user", "content": request.message}],
@@ -193,16 +234,17 @@ async def chat(request: ChatRequest):
             ai_response = response.content[0].text
             tokens_used = response.usage.input_tokens + response.usage.output_tokens
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Claude API error: {str(e)}") from e
-    else:
+            logger.error("Anthropic API call failed", exc_info=True, extra={"model": model_id})
+            raise HTTPException(status_code=500, detail="AI service temporarily unavailable") from e
+    else:  # provider == "openai"
         # Use OpenAI
         if not openai_client:
             raise HTTPException(status_code=500, detail="OpenAI API key not configured")
 
         try:
-            # Use new OpenAI SDK syntax
+            # Use new OpenAI SDK syntax with resolved model ID
             response = openai_client.chat.completions.create(
-                model=request.model,
+                model=model_id,
                 messages=[
                     {"role": "system", "content": "You are Relay, a helpful AI assistant."},
                     {"role": "user", "content": request.message},
@@ -213,7 +255,8 @@ async def chat(request: ChatRequest):
             ai_response = response.choices[0].message.content
             tokens_used = response.usage.total_tokens
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(e)}") from e
+            logger.error("OpenAI API call failed", exc_info=True, extra={"model": model_id})
+            raise HTTPException(status_code=500, detail="AI service temporarily unavailable") from e
 
     # Save to database (for both OpenAI and Claude)
     save_conversation(request.user_id, request.session_id, request.message, ai_response, request.model, tokens_used)
@@ -227,18 +270,25 @@ async def chat(request: ChatRequest):
 async def chat_stream(request: ChatRequest):
     """Streaming chat endpoint - get responses in real-time"""
 
+    # Validate model before starting stream
+    try:
+        provider, model_id, config = validate_and_resolve(request.model)
+    except ValueError as e:
+        logger.warning(f"Invalid model key in stream request: {repr(request.model)[:50]}")
+        raise HTTPException(status_code=400, detail="Invalid model key") from e
+
     async def generate():
         full_response = ""
 
         try:
-            if "claude" in request.model.lower():
+            if provider == "anthropic":
                 # Claude streaming
                 if not anthropic_client:
                     yield f"data: {json.dumps({'error': 'Anthropic API key not configured'})}\n\n"
                     return
 
                 with anthropic_client.messages.stream(
-                    model="claude-3-haiku-20240307",
+                    model=model_id,
                     max_tokens=1000,
                     temperature=0.7,
                     messages=[{"role": "user", "content": request.message}],
@@ -246,14 +296,14 @@ async def chat_stream(request: ChatRequest):
                     for text in stream.text_stream:
                         full_response += text
                         yield f"data: {json.dumps({'content': text})}\n\n"
-            else:
+            else:  # provider == "openai"
                 # OpenAI streaming
                 if not openai_client:
                     yield f"data: {json.dumps({'error': 'OpenAI API key not configured'})}\n\n"
                     return
 
                 stream = openai_client.chat.completions.create(
-                    model=request.model,
+                    model=model_id,
                     messages=[
                         {"role": "system", "content": "You are Relay, a helpful AI assistant."},
                         {"role": "user", "content": request.message},
@@ -274,8 +324,9 @@ async def chat_stream(request: ChatRequest):
 
             yield f"data: {json.dumps({'done': True})}\n\n"
 
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        except Exception:
+            logger.error("Stream generation failed", exc_info=True, extra={"model": model_id})
+            yield f"data: {json.dumps({'error': 'Stream interrupted'})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
@@ -363,39 +414,41 @@ async def multi_chat(request: ChatRequest):
 
     responses = {}
 
-    # Try GPT-3.5
+    # Try GPT-fast (OpenAI)
     if openai_client:
         try:
             gpt_response = await chat(
                 ChatRequest(
                     message=request.message,
-                    model="gpt-3.5-turbo",
+                    model="gpt-fast",
                     user_id=request.user_id,
                     session_id=f"{request.session_id}-multi-gpt",
                 )
             )
-            responses["gpt-3.5-turbo"] = gpt_response.response
-        except Exception as e:
-            responses["gpt-3.5-turbo"] = f"Error: {str(e)}"
+            responses["gpt-fast"] = gpt_response.response
+        except Exception:
+            logger.error("Multi-chat gpt-fast failed", exc_info=True)
+            responses["gpt-fast"] = "Service temporarily unavailable"
     else:
-        responses["gpt-3.5-turbo"] = "OpenAI not configured"
+        responses["gpt-fast"] = "OpenAI not configured"
 
-    # Try Claude
+    # Try Claude-fast (Anthropic)
     if anthropic_client:
         try:
             claude_response = await chat(
                 ChatRequest(
                     message=request.message,
-                    model="claude-3-haiku",
+                    model="claude-fast",
                     user_id=request.user_id,
                     session_id=f"{request.session_id}-multi-claude",
                 )
             )
-            responses["claude-3-haiku"] = claude_response.response
-        except Exception as e:
-            responses["claude-3-haiku"] = f"Error: {str(e)}"
+            responses["claude-fast"] = claude_response.response
+        except Exception:
+            logger.error("Multi-chat claude-fast failed", exc_info=True)
+            responses["claude-fast"] = "Service temporarily unavailable"
     else:
-        responses["claude-3-haiku"] = "Anthropic not configured"
+        responses["claude-fast"] = "Anthropic not configured"
 
     # Save combined response
     combined_response = "\n\n".join([f"**{model}:**\n{resp}" for model, resp in responses.items()])
