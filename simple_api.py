@@ -48,10 +48,12 @@ class SensitiveDataFilter(logging.Filter):
         return True
 
 
-# Apply filter to all handlers
-logger = logging.getLogger(__name__)
-for handler in logger.handlers:
+# Apply filter to root logger handlers (affects all descendant loggers)
+root_logger = logging.getLogger()
+for handler in root_logger.handlers:
     handler.addFilter(SensitiveDataFilter())
+
+logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
@@ -79,15 +81,17 @@ if openai_api_key:
     try:
         openai_client = OpenAI(api_key=openai_api_key)
         print("✓ OpenAI client initialized")
-    except Exception as e:
-        print(f"⚠ OpenAI client failed: {e}")
+    except Exception:
+        logger.error("OpenAI client initialization failed", exc_info=True)
+        print("⚠ OpenAI client initialization failed")
 
 if anthropic_api_key:
     try:
         anthropic_client = anthropic.Anthropic(api_key=anthropic_api_key)
         print("✓ Anthropic client initialized")
-    except Exception as e:
-        print(f"⚠ Anthropic client failed: {e}")
+    except Exception:
+        logger.error("Anthropic client initialization failed", exc_info=True)
+        print("⚠ Anthropic client initialization failed")
 
 if not openai_client and not anthropic_client:
     print("\n⚠ WARNING: No AI clients configured!")
@@ -187,6 +191,7 @@ def health_check():
         conn.close()
         db_ok = True
     except Exception:
+        logger.error("Health check database access failed", exc_info=True)
         db_ok = False
         message_count = 0
 
