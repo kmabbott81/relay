@@ -1,0 +1,30 @@
+# Relay MVP Requirements
+# Install with: pip install -r requirements_mvp.txt
+
+# Core Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0.post1
+pydantic==2.5.0
+
+# AI/LLM APIs
+openai==1.6.1
+anthropic==0.8.1
+
+# Environment & Config
+python-dotenv==1.0.0
+
+# Database (using built-in sqlite3, no extra package needed)
+
+# CORS support (included with FastAPI)
+
+# Optional: For better async support
+asyncio==3.4.3
+
+# Optional: For production deployment
+gunicorn==21.2.0
+
+# Future Integrations (uncomment when needed)
+# google-api-python-client==2.111.0  # For Gmail
+# google-auth-httplib2==0.2.0        # For Gmail auth
+# google-auth-oauthlib==1.2.0        # For Gmail OAuth
+# slack-sdk==3.26.1                  # For Slack integration
