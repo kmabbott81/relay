@@ -19,6 +19,7 @@ jobs:
   migrate-db:
     name: Run Database Migrations (Beta)
     runs-on: ubuntu-latest
+    if: ${{ false }}  # DISABLED: Staging environment paused per user request
 
     steps:
       - name: Checkout code
