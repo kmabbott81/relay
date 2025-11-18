@@ -7,6 +7,7 @@ Mounted at /mvp on the beta API.
 
 import logging
 import os
+import re
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -15,7 +16,25 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
+from models_config import validate_and_resolve
 from relay_ai.platform.api import mvp_db
+
+
+# Redact sensitive data from logs
+class SensitiveDataFilter(logging.Filter):
+    """Filter out API keys and sensitive tokens from logs."""
+
+    REDACT_PATTERNS = [
+        r"(sk-[a-zA-Z0-9]{48})",  # OpenAI keys
+        r"(sk-ant-[a-zA-Z0-9-]{95})",  # Anthropic keys
+        r"(Bearer [a-zA-Z0-9._-]+)",  # JWT tokens
+    ]
+
+    def filter(self, record):
+        for pattern in self.REDACT_PATTERNS:
+            record.msg = re.sub(pattern, "[REDACTED]", str(record.msg))
+        return True
+
 
 # Initialize OpenAI and Anthropic clients
 try:
@@ -37,6 +56,15 @@ except Exception as e:
     logging.warning(f"Anthropic client not available: {e}")
 
 router = APIRouter()
+
+# Initialize logger with SensitiveDataFilter applied
+logger = logging.getLogger(__name__)
+for handler in logger.handlers:
+    handler.addFilter(SensitiveDataFilter())
+# Also ensure the root logger filters sensitive data for all descendant loggers
+root_logger = logging.getLogger()
+for handler in root_logger.handlers:
+    handler.addFilter(SensitiveDataFilter())
 
 
 # Pydantic models
@@ -279,6 +307,15 @@ async def chat(request: ChatRequest):
             logging.warning(f"Failed to get default user_id: {e}")
             db_available = False
 
+    # Resolve model key to provider and actual model ID (Phase 2C integration)
+    resolved_model_id = None
+    try:
+        _, resolved_model_id, config = validate_and_resolve(request.model)
+    except ValueError as e:
+        logging.warning(f"Model validation failed: {e}, using request.model as-is")
+        # Fallback: use request.model as-is
+        resolved_model_id = request.model
+
     # Handle thread_id: create new thread if not provided
     thread_id = request.thread_id
     if db_available and user_id and not thread_id:
@@ -290,7 +327,7 @@ async def chat(request: ChatRequest):
             logging.warning(f"Failed to create thread: {e}")
             db_available = False
 
-    # Insert user message to database
+    # Insert user message to database (Phase 2C: include model_key and model_id)
     if db_available and user_id and thread_id:
         try:
             await mvp_db.create_message(
@@ -298,6 +335,8 @@ async def chat(request: ChatRequest):
                 user_id=user_id,
                 role="user",
                 content=request.message,
+                model_key=request.model,  # Logical key from request
+                model_id=resolved_model_id,  # Resolved provider model ID
             )
         except Exception as e:
             logging.warning(f"Failed to insert user message: {e}")
@@ -310,7 +349,7 @@ async def chat(request: ChatRequest):
 
         try:
             response = anthropic_client.messages.create(
-                model="claude-3-haiku-20240307",
+                model=resolved_model_id,
                 max_tokens=1000,
                 temperature=0.7,
                 messages=[{"role": "user", "content": request.message}],
@@ -323,7 +362,8 @@ async def chat(request: ChatRequest):
                 "total_tokens": tokens_used,
             }
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Claude API error: {str(e)}") from e
+            logger.error("Anthropic API call failed", exc_info=True, extra={"model": resolved_model_id})
+            raise HTTPException(status_code=500, detail="AI service temporarily unavailable") from e
     else:
         # Use OpenAI
         if not openai_client:
@@ -331,7 +371,7 @@ async def chat(request: ChatRequest):
 
         try:
             response = openai_client.chat.completions.create(
-                model=request.model,
+                model=resolved_model_id,
                 messages=[
                     {"role": "system", "content": "You are Relay, a helpful AI assistant."},
                     {"role": "user", "content": request.message},
@@ -347,9 +387,10 @@ async def chat(request: ChatRequest):
                 "total_tokens": tokens_used,
             }
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(e)}") from e
+            logger.error("OpenAI API call failed", exc_info=True, extra={"model": resolved_model_id})
+            raise HTTPException(status_code=500, detail="AI service temporarily unavailable") from e
 
-    # Insert assistant message to database
+    # Insert assistant message to database (Phase 2C: include model_key and model_id)
     if db_available and user_id and thread_id:
         try:
             await mvp_db.create_message(
@@ -358,6 +399,8 @@ async def chat(request: ChatRequest):
                 role="assistant",
                 content=ai_response,
                 model_name=request.model,
+                model_key=request.model,  # Logical key from request
+                model_id=resolved_model_id,  # Resolved provider model ID
                 token_usage_json=token_usage_json,
             )
         except Exception as e:
@@ -450,8 +493,9 @@ async def multi_chat(request: ChatRequest):
                     )
                 except Exception as e:
                     logging.warning(f"Failed to insert GPT assistant message: {e}")
-        except Exception as e:
-            responses["gpt-3.5-turbo"] = f"Error: {str(e)}"
+        except Exception:
+            logger.error("Multi-chat OpenAI API call failed", exc_info=True)
+            responses["gpt-3.5-turbo"] = "Error: AI service temporarily unavailable"
     else:
         responses["gpt-3.5-turbo"] = "OpenAI not configured"
 
@@ -485,8 +529,9 @@ async def multi_chat(request: ChatRequest):
                     )
                 except Exception as e:
                     logging.warning(f"Failed to insert Claude assistant message: {e}")
-        except Exception as e:
-            responses["claude-3-haiku"] = f"Error: {str(e)}"
+        except Exception:
+            logger.error("Multi-chat Anthropic API call failed", exc_info=True)
+            responses["claude-3-haiku"] = "Error: AI service temporarily unavailable"
     else:
         responses["claude-3-haiku"] = "Anthropic not configured"
 
@@ -508,7 +553,8 @@ async def list_user_threads(user_id: Optional[UUID] = None):
         try:
             user_id = await mvp_db.get_default_user_id()
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to get default user: {str(e)}") from e
+            logger.error("Failed to get default user", exc_info=True)
+            raise HTTPException(status_code=500, detail="Failed to retrieve user information") from e
 
     try:
         threads = await mvp_db.list_threads(user_id)
@@ -520,8 +566,8 @@ async def list_user_threads(user_id: Optional[UUID] = None):
             thread["user_id"] = str(thread["user_id"])
         return {"threads": threads}
     except Exception as e:
-        logging.error(f"Failed to list threads: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list threads: {str(e)}") from e
+        logger.error("Failed to list threads", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve threads") from e
 
 
 @router.get("/threads/{thread_id}/messages")
@@ -540,7 +586,8 @@ async def list_thread_messages(thread_id: UUID, user_id: Optional[UUID] = None):
         try:
             user_id = await mvp_db.get_default_user_id()
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to get default user: {str(e)}") from e
+            logger.error("Failed to get default user", exc_info=True)
+            raise HTTPException(status_code=500, detail="Failed to retrieve user information") from e
 
     try:
         # Verify thread exists
@@ -566,5 +613,5 @@ async def list_thread_messages(thread_id: UUID, user_id: Optional[UUID] = None):
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Failed to list messages: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list messages: {str(e)}") from e
+        logger.error("Failed to list messages", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve messages") from e
