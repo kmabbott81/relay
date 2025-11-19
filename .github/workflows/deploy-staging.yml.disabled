@@ -1,4 +1,14 @@
-name: Deploy to Staging (relay-staging-api)
+# ============================================================================
+# ARCHIVED WORKFLOW - 2025-11-19
+# ============================================================================
+# This workflow is DISABLED and will not be triggered.
+# Staging environment has been archived. Production is the only active runtime.
+#
+# See: STAGING_ARCHIVAL_DECISION_2025-11-19.md for details and rebuild instructions.
+# DO NOT re-enable without explicit Tech-Lead + Repo-Guardian approval.
+# ============================================================================
+
+name: Deploy to Staging (relay-staging-api) [ARCHIVED - DO NOT USE]
 
 on:
   push:

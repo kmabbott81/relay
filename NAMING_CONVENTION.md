@@ -141,6 +141,38 @@ RELAY_PROD_VERCEL_TOKEN=...
 
 ---
 
+## Archived Stages
+
+### STAGING Stage [ARCHIVED 2025-11-19]
+
+**Status**: ✅ Archived - No longer active
+
+**Details**:
+- Staging environment is no longer in use
+- Production (`relay-prod-*`) is the only active runtime
+- Railway environment renamed to: `staging ARCHIVED DO NOT DEPLOY`
+- CI/CD workflow disabled: `.github/workflows/deploy-staging.yml.disabled`
+- Database migrations will not run on staging
+
+**Rebuild Path** (if needed later):
+1. Create new Staging environment in Railway
+2. Re-enable `.github/workflows/deploy-staging.yml.disabled`
+3. Update GitHub Secrets with new staging credentials
+4. Follow steps in `STAGING_ARCHIVAL_DECISION_2025-11-19.md`
+
+**References**:
+- Decision Document: `STAGING_ARCHIVAL_DECISION_2025-11-19.md`
+- Archival Rationale:
+  - Reduces maintenance overhead (dual environments)
+  - Eliminates configuration complexity
+  - Production-only consolidation
+  - All MVP features already tested in production
+
+**Tech-Lead Approval**: ✅ Option A++ approach (minimal, reversible changes)
+**Repo-Guardian Review**: ✅ All governance checks passed
+
+---
+
 ## Quick Reference for Developers
 
 ### When you see a service name, ask:

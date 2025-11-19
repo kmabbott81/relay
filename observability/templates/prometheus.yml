@@ -6,15 +6,18 @@ global:
     cluster: 'relay'
 
 scrape_configs:
-  - job_name: 'relay-staging'
-    metrics_path: '/metrics'
-    scheme: https
-    static_configs:
-      - targets:
-          - 'relay-production-f2a6.up.railway.app'
-    scrape_interval: 15s
-    scrape_timeout: 10s
-    honor_labels: true
+  # ARCHIVED 2025-11-19: Staging environment no longer active
+  # See: STAGING_ARCHIVAL_DECISION_2025-11-19.md
+  # Re-enable if staging is restored following the rebuild process in the decision document
+  # - job_name: 'relay-staging'
+  #   metrics_path: '/metrics'
+  #   scheme: https
+  #   static_configs:
+  #     - targets:
+  #         - 'relay-production-f2a6.up.railway.app'
+  #   scrape_interval: 15s
+  #   scrape_timeout: 10s
+  #   honor_labels: true
 
 # Alert rules
 rule_files:

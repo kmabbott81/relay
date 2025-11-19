@@ -25,7 +25,7 @@ class Stage(Enum):
     """Deployment stages for Relay platform."""
 
     BETA = "beta"
-    STAGING = "staging"
+    STAGING = "staging"  # ARCHIVED 2025-11-19 - See STAGING_ARCHIVAL_DECISION_2025-11-19.md
     PROD = "prod"
 
     def __str__(self) -> str:
