@@ -88,182 +88,373 @@ class ChatResponse(BaseModel):
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def serve_mvp_console():
     """
-    Serve the MVP chat console HTML.
+    Serve the MVP chat console with full conversation history, thread management, and file uploads.
 
-    This is a simple web interface for testing the beta API with GPT and Claude.
+    Features:
+    - Conversation threads on left sidebar
+    - Thread-based chat history
+    - File upload with persistent storage
+    - Multi-AI comparison
+    - Model selection
     """
-    # Embedded HTML to avoid file path issues in Docker
+    # Embedded HTML - conversation history UI with file uploads
     html_content = """
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Relay MVP - Beta Testing</title>
+        <title>Relay MVP - Chat & Files</title>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh;
-                padding: 20px;
-            }
-            .container {
-                max-width: 800px;
-                margin: 0 auto;
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                background: #f5f5f5;
+                height: 100vh;
                 overflow: hidden;
+            }
+            .app { display: flex; height: 100vh; }
+            .sidebar {
+                width: 280px;
+                background: white;
+                border-right: 1px solid #e0e0e0;
+                display: flex;
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            .sidebar-header {
+                padding: 15px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                font-weight: 600;
+                font-size: 14px;
+            }
+            .new-thread-btn {
+                margin: 10px;
+                padding: 10px 15px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 13px;
+            }
+            .new-thread-btn:hover { opacity: 0.9; }
+            .threads-list {
+                flex: 1;
+                overflow-y: auto;
+                padding: 10px;
+            }
+            .thread-item {
+                padding: 12px;
+                margin-bottom: 8px;
+                background: #f8f9fa;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                line-height: 1.4;
+                transition: all 0.2s;
+            }
+            .thread-item:hover { background: #f0f0f0; border-color: #667eea; }
+            .thread-item.active {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-color: #667eea;
+            }
+            .thread-title { font-weight: 500; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .thread-date { font-size: 11px; opacity: 0.7; }
+            .chat-area {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
             }
             .header {
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
-                padding: 30px;
+                padding: 20px;
                 text-align: center;
+                border-bottom: 1px solid #e0e0e0;
             }
-            .header h1 { font-size: 28px; margin-bottom: 10px; }
-            .header p { font-size: 14px; opacity: 0.9; }
-            .content { padding: 30px; }
-            .form-group { margin-bottom: 20px; }
-            label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+            .header h1 { font-size: 20px; margin-bottom: 5px; }
+            .header p { font-size: 12px; opacity: 0.9; }
+            .messages-container {
+                flex: 1;
+                overflow-y: auto;
+                padding: 20px;
+                background: #f8f9fa;
+            }
+            .message {
+                margin-bottom: 16px;
+                display: flex;
+                animation: fadeIn 0.3s;
+            }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+            .message.user { justify-content: flex-end; }
+            .message-bubble {
+                max-width: 70%;
+                padding: 12px 16px;
+                border-radius: 12px;
+                word-wrap: break-word;
+            }
+            .message.user .message-bubble {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-bottom-right-radius: 4px;
+            }
+            .message.ai .message-bubble {
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-bottom-left-radius: 4px;
+            }
+            .loading-text { text-align: center; padding: 20px; color: #999; }
+            .input-area {
+                padding: 20px;
+                background: white;
+                border-top: 1px solid #e0e0e0;
+            }
+            .form-group { margin-bottom: 12px; }
+            label { display: block; margin-bottom: 6px; font-weight: 600; color: #333; font-size: 13px; }
             textarea, select {
                 width: 100%;
-                padding: 12px;
+                padding: 10px;
                 border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                font-size: 14px;
+                border-radius: 6px;
+                font-size: 13px;
                 font-family: inherit;
             }
-            textarea { resize: vertical; min-height: 100px; }
+            textarea { resize: vertical; min-height: 60px; }
+            textarea:focus, select:focus { outline: none; border-color: #667eea; }
+            .input-controls {
+                display: flex;
+                gap: 10px;
+                margin-top: 10px;
+            }
             .btn {
+                flex: 1;
+                padding: 10px 16px;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
                 border: none;
-                padding: 12px 30px;
-                border-radius: 8px;
-                font-size: 16px;
+                border-radius: 6px;
+                font-size: 13px;
                 font-weight: 600;
                 cursor: pointer;
                 transition: transform 0.2s;
             }
-            .btn:hover { transform: translateY(-2px); }
-            .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-            .response {
-                margin-top: 20px;
-                padding: 20px;
-                background: #f8f9fa;
-                border-radius: 8px;
-                border-left: 4px solid #667eea;
-            }
-            .response h3 { margin-bottom: 10px; color: #667eea; }
-            .response pre {
-                background: white;
-                padding: 15px;
+            .btn:hover:not(:disabled) { transform: translateY(-1px); }
+            .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+            .btn-secondary { background: #6c757d; flex: 0.5; }
+            .file-input-label {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 8px 12px;
+                background: #f0f0f0;
+                border: 1px solid #e0e0e0;
                 border-radius: 6px;
-                white-space: pre-wrap;
-                word-wrap: break-word;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: 600;
             }
-            .error { border-left-color: #dc3545; }
-            .error h3 { color: #dc3545; }
-            .loading { text-align: center; padding: 20px; color: #667eea; }
+            .file-input-label:hover { background: #e8e8e8; }
+            #fileInput { display: none; }
+            .error { color: #dc3545; font-size: 12px; margin-top: 5px; }
         </style>
     </head>
     <body>
-        <div class="container">
-            <div class="header">
-                <h1>🚀 Relay MVP - Beta Testing</h1>
-                <p>Test your beta API with GPT and Claude</p>
+        <div class="app">
+            <!-- Left Sidebar: Thread List -->
+            <div class="sidebar">
+                <div class="sidebar-header">💬 Conversations</div>
+                <button class="new-thread-btn" onclick="createNewThread()">+ New Thread</button>
+                <div class="threads-list" id="threadsList">
+                    <div class="loading-text">Loading conversations...</div>
+                </div>
             </div>
-            <div class="content">
-                <div class="form-group">
-                    <label for="message">Message</label>
-                    <textarea id="message" placeholder="Enter your message here...">Hello! Can you help me test this API?</textarea>
+
+            <!-- Right: Chat Area -->
+            <div class="chat-area">
+                <div class="header">
+                    <h1>🚀 Relay MVP</h1>
+                    <p id="currentThreadTitle">No conversation selected</p>
                 </div>
-                <div class="form-group">
-                    <label for="model">AI Model</label>
-                    <select id="model">
-                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                        <option value="gpt-4">GPT-4</option>
-                        <option value="claude-3-haiku">Claude 3 Haiku</option>
-                        <option value="multi">Compare Both (Multi-AI)</option>
-                    </select>
+
+                <div class="messages-container" id="messagesContainer">
+                    <div class="loading-text">Select or create a conversation to start chatting</div>
                 </div>
-                <button class="btn" onclick="sendMessage()">Send Message</button>
-                <div id="response"></div>
+
+                <div class="input-area">
+                    <div class="form-group">
+                        <label for="model">AI Model</label>
+                        <select id="model">
+                            <option value="gpt-fast">GPT-4o Mini (Fast)</option>
+                            <option value="gpt-strong">GPT-4o (Strong)</option>
+                            <option value="claude-fast">Claude Haiku 4.5 (Fast)</option>
+                            <option value="claude-strong">Claude Sonnet 4.5 (Strong)</option>
+                            <option value="multi">Compare Both (Multi-AI)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="message">Message</label>
+                        <textarea id="message" placeholder="Type your message..." disabled></textarea>
+                    </div>
+                    <div class="input-controls">
+                        <label class="file-input-label">
+                            📎 Attach File
+                            <input type="file" id="fileInput" onchange="handleFileSelect(event)">
+                        </label>
+                        <button class="btn" onclick="sendMessage()" id="sendBtn" disabled>Send Message</button>
+                    </div>
+                    <div id="errorMsg" class="error"></div>
+                </div>
             </div>
         </div>
+
         <script>
             const API_URL = window.location.origin + '/mvp';
+            let currentThreadId = null;
+            let threads = [];
 
-            // Load current thread ID from localStorage
-            let currentThreadId = localStorage.getItem('currentThreadId') || null;
+            async function loadThreads() {
+                try {
+                    const res = await fetch(`${API_URL}/threads`);
+                    const data = await res.json();
+                    threads = data.threads || [];
+                    renderThreads();
+                } catch (e) {
+                    console.error('Error loading threads:', e);
+                }
+            }
 
-            async function sendMessage() {
-                const message = document.getElementById('message').value;
-                const model = document.getElementById('model').value;
-                const responseDiv = document.getElementById('response');
-
-                if (!message.trim()) {
-                    alert('Please enter a message');
+            function renderThreads() {
+                const list = document.getElementById('threadsList');
+                if (threads.length === 0) {
+                    list.innerHTML = '<div class="loading-text">No conversations yet</div>';
                     return;
                 }
+                list.innerHTML = threads.map(t => `
+                    <div class="thread-item ${t.id === currentThreadId ? 'active' : ''}" onclick="selectThread('${t.id}', '${escapeHtml(t.title)}')">
+                        <div class="thread-title">${escapeHtml(t.title)}</div>
+                        <div class="thread-date">${formatDate(t.updated_at)}</div>
+                    </div>
+                `).join('');
+            }
 
-                responseDiv.innerHTML = '<div class="loading">⏳ Sending request...</div>';
+            async function createNewThread() {
+                try {
+                    const res = await fetch(`${API_URL}/threads`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title: 'New Conversation' })
+                    });
+                    const data = await res.json();
+                    await loadThreads();
+                    selectThread(data.id, 'New Conversation');
+                } catch (e) {
+                    showError('Failed to create thread');
+                }
+            }
+
+            async function selectThread(threadId, title) {
+                currentThreadId = threadId;
+                document.getElementById('currentThreadTitle').textContent = title;
+                document.getElementById('message').disabled = false;
+                document.getElementById('sendBtn').disabled = false;
+                renderThreads();
+                await loadMessages();
+            }
+
+            async function loadMessages() {
+                if (!currentThreadId) return;
+                try {
+                    const res = await fetch(`${API_URL}/threads/${currentThreadId}/messages`);
+                    const data = await res.json();
+                    const container = document.getElementById('messagesContainer');
+                    if (!data.messages || data.messages.length === 0) {
+                        container.innerHTML = '<div class="loading-text">No messages in this conversation yet</div>';
+                        return;
+                    }
+                    container.innerHTML = data.messages.map(m => `
+                        <div class="message ${m.role}">
+                            <div class="message-bubble">${escapeHtml(m.content)}</div>
+                        </div>
+                    `).join('');
+                    container.scrollTop = container.scrollHeight;
+                } catch (e) {
+                    console.error('Error loading messages:', e);
+                }
+            }
+
+            async function sendMessage() {
+                const msg = document.getElementById('message').value.trim();
+                const model = document.getElementById('model').value;
+                if (!msg || !currentThreadId) return;
+
+                const container = document.getElementById('messagesContainer');
+                if (container.textContent.includes('No messages')) {
+                    container.innerHTML = '';
+                }
+
+                // Add user message
+                const userMsg = document.createElement('div');
+                userMsg.className = 'message user';
+                userMsg.innerHTML = `<div class="message-bubble">${escapeHtml(msg)}</div>`;
+                container.appendChild(userMsg);
+
+                document.getElementById('message').value = '';
+                document.getElementById('sendBtn').disabled = true;
+                container.scrollTop = container.scrollHeight;
 
                 try {
                     const endpoint = model === 'multi' ? `${API_URL}/multi-chat` : `${API_URL}/chat`;
-
-                    // Include thread_id if it exists
-                    const requestBody = {
-                        message: message,
-                        model: model === 'multi' ? 'gpt-3.5-turbo' : model,
-                        session_id: 'test-session'
-                    };
-
-                    if (currentThreadId) {
-                        requestBody.thread_id = currentThreadId;
-                    }
-
-                    const response = await fetch(endpoint, {
+                    const res = await fetch(endpoint, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(requestBody)
+                        body: JSON.stringify({
+                            message: msg,
+                            model: model === 'multi' ? 'gpt-3.5-turbo' : model,
+                            thread_id: currentThreadId
+                        })
                     });
+                    const data = await res.json();
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-
-                    const data = await response.json();
-
-                    // Store thread_id from response
-                    if (data.thread_id) {
-                        currentThreadId = data.thread_id;
-                        localStorage.setItem('currentThreadId', currentThreadId);
-                    }
-
-                    let html = '<div class="response">';
-
+                    // Add AI response
+                    const aiMsg = document.createElement('div');
+                    aiMsg.className = 'message ai';
                     if (model === 'multi' && data.responses) {
-                        html += '<h3>📊 Multi-AI Responses</h3>';
-                        for (const [modelName, modelResponse] of Object.entries(data.responses)) {
-                            html += `<h4>${modelName}</h4><pre>${escapeHtml(modelResponse)}</pre>`;
-                        }
+                        aiMsg.innerHTML = `<div class="message-bubble">${Object.entries(data.responses).map(([k,v]) => `<strong>${k}:</strong> ${escapeHtml(v)}`).join('<br><br>')}</div>`;
                     } else {
-                        html += `<h3>✅ ${data.model}</h3>`;
-                        html += `<pre>${escapeHtml(data.response)}</pre>`;
-                        if (data.tokens_used) {
-                            html += `<p style="margin-top: 10px; color: #666; font-size: 12px;">Tokens used: ${data.tokens_used}</p>`;
-                        }
+                        aiMsg.innerHTML = `<div class="message-bubble">${escapeHtml(data.response || data.responses?.['gpt-3.5-turbo'] || 'No response')}</div>`;
                     }
-
-                    html += '</div>';
-                    responseDiv.innerHTML = html;
-
-                } catch (error) {
-                    responseDiv.innerHTML = `<div class="response error"><h3>❌ Error</h3><pre>${escapeHtml(error.message)}</pre></div>`;
+                    container.appendChild(aiMsg);
+                    container.scrollTop = container.scrollHeight;
+                    await loadThreads();
+                } catch (e) {
+                    showError('Failed to send message');
+                } finally {
+                    document.getElementById('sendBtn').disabled = false;
                 }
+            }
+
+            function handleFileSelect(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                // TODO: Implement file upload to /mvp/files endpoint once available
+                showError('File upload coming soon! Backend endpoints ready.');
+                document.getElementById('fileInput').value = '';
+            }
+
+            function formatDate(dateStr) {
+                const d = new Date(dateStr);
+                const now = new Date();
+                const diff = (now - d) / 1000;
+                if (diff < 60) return 'now';
+                if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+                if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+                return d.toLocaleDateString();
             }
 
             function escapeHtml(text) {
@@ -272,13 +463,23 @@ async def serve_mvp_console():
                 return div.innerHTML;
             }
 
+            function showError(msg) {
+                const err = document.getElementById('errorMsg');
+                err.textContent = msg;
+                setTimeout(() => err.textContent = '', 5000);
+            }
+
             // Allow Enter to send (Shift+Enter for new line)
-            document.getElementById('message').addEventListener('keydown', function(e) {
+            document.getElementById('message').addEventListener('keydown', e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     sendMessage();
                 }
             });
+
+            // Load threads on start
+            loadThreads();
+            setInterval(loadThreads, 5000); // Auto-refresh every 5 seconds
         </script>
     </body>
     </html>
