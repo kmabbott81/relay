@@ -302,9 +302,9 @@ async def serve_mvp_console():
                         <textarea id="message" placeholder="Type your message..." disabled></textarea>
                     </div>
                     <div class="input-controls">
-                        <label class="file-input-label">
+                        <label class="file-input-label" title="File upload not yet available in this MVP" style="opacity: 0.5; cursor: not-allowed;">
                             📎 Attach File
-                            <input type="file" id="fileInput" onchange="handleFileSelect(event)">
+                            <input type="file" id="fileInput" disabled>
                         </label>
                         <button class="btn" onclick="sendMessage()" id="sendBtn" disabled>Send Message</button>
                     </div>
@@ -314,27 +314,48 @@ async def serve_mvp_console():
         </div>
 
         <script>
-            const API_URL = window.location.origin + '/mvp';
+            // API Base Configuration (Phase 1 Fix)
+            // Uses /mvp/api/v1 as the API base path following REST convention
+            // window.__RELAY_API_BASE__ allows injection for testing/local dev
+            const API_BASE_PATH = '/mvp/api/v1';
+            const API_BASE = window.__RELAY_API_BASE__ ?? API_BASE_PATH;
+
             let currentThreadId = null;
             let threads = [];
+            let threadLoadFailed = false;
 
             async function loadThreads() {
                 try {
-                    const res = await fetch(`${API_URL}/threads`);
+                    threadLoadFailed = false;
+                    const res = await fetch(`${API_BASE}/threads`);
+
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}: Failed to load threads from ${API_BASE}/threads`);
+                    }
+
                     const data = await res.json();
                     threads = data.threads || [];
                     renderThreads();
                 } catch (e) {
-                    console.error('Error loading threads:', e);
+                    threadLoadFailed = true;
+                    console.error(`Failed to load threads from ${API_BASE}/threads:`, e);
+                    renderThreads();
                 }
             }
 
             function renderThreads() {
                 const list = document.getElementById('threadsList');
+
+                if (threadLoadFailed) {
+                    list.innerHTML = '<div class="loading-text" style="color: #d9534f;">Couldn\'t load conversations.<br><button onclick="loadThreads()" style="margin-top: 10px; padding: 5px 10px; background: #d9534f; color: white; border: none; border-radius: 3px; cursor: pointer;">Retry</button></div>';
+                    return;
+                }
+
                 if (threads.length === 0) {
                     list.innerHTML = '<div class="loading-text">No conversations yet</div>';
                     return;
                 }
+
                 list.innerHTML = threads.map(t => `
                     <div class="thread-item ${t.id === currentThreadId ? 'active' : ''}" onclick="selectThread('${t.id}', '${escapeHtml(t.title)}')">
                         <div class="thread-title">${escapeHtml(t.title)}</div>
@@ -345,16 +366,22 @@ async def serve_mvp_console():
 
             async function createNewThread() {
                 try {
-                    const res = await fetch(`${API_URL}/threads`, {
+                    const res = await fetch(`${API_BASE}/threads`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ title: 'New Conversation' })
                     });
+
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}: Failed to create thread`);
+                    }
+
                     const data = await res.json();
                     await loadThreads();
                     selectThread(data.id, 'New Conversation');
                 } catch (e) {
-                    showError('Failed to create thread');
+                    console.error(`Failed to create thread at ${API_BASE}/threads:`, e);
+                    showError('Failed to create thread. Please try again.');
                 }
             }
 
@@ -370,7 +397,12 @@ async def serve_mvp_console():
             async function loadMessages() {
                 if (!currentThreadId) return;
                 try {
-                    const res = await fetch(`${API_URL}/threads/${currentThreadId}/messages`);
+                    const res = await fetch(`${API_BASE}/threads/${currentThreadId}/messages`);
+
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}: Failed to load messages`);
+                    }
+
                     const data = await res.json();
                     const container = document.getElementById('messagesContainer');
                     if (!data.messages || data.messages.length === 0) {
@@ -384,7 +416,9 @@ async def serve_mvp_console():
                     `).join('');
                     container.scrollTop = container.scrollHeight;
                 } catch (e) {
-                    console.error('Error loading messages:', e);
+                    console.error(`Failed to load messages from ${API_BASE}/threads/${currentThreadId}/messages:`, e);
+                    const container = document.getElementById('messagesContainer');
+                    container.innerHTML = '<div class="loading-text" style="color: #d9534f;">Failed to load messages. Please try selecting a different conversation.</div>';
                 }
             }
 
@@ -409,7 +443,7 @@ async def serve_mvp_console():
                 container.scrollTop = container.scrollHeight;
 
                 try {
-                    const endpoint = model === 'multi' ? `${API_URL}/multi-chat` : `${API_URL}/chat`;
+                    const endpoint = model === 'multi' ? `${API_BASE}/multi-chat` : `${API_BASE}/chat`;
                     const res = await fetch(endpoint, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -419,6 +453,11 @@ async def serve_mvp_console():
                             thread_id: currentThreadId
                         })
                     });
+
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}: Failed to send message`);
+                    }
+
                     const data = await res.json();
 
                     // Add AI response
@@ -433,7 +472,8 @@ async def serve_mvp_console():
                     container.scrollTop = container.scrollHeight;
                     await loadThreads();
                 } catch (e) {
-                    showError('Failed to send message');
+                    console.error(`Failed to send message to ${API_BASE}/chat:`, e);
+                    showError('Failed to send message. Please check your connection and try again.');
                 } finally {
                     document.getElementById('sendBtn').disabled = false;
                 }
@@ -456,7 +496,7 @@ async def serve_mvp_console():
 
                 try {
                     document.getElementById('sendBtn').disabled = true;
-                    const res = await fetch(`${API_URL}/files?thread_id=${currentThreadId}`, {
+                    const res = await fetch(`${API_BASE}/files?thread_id=${currentThreadId}`, {
                         method: 'POST',
                         body: formData
                     });
@@ -473,6 +513,7 @@ async def serve_mvp_console():
                         await loadThreadFiles();
                     }
                 } catch (e) {
+                    console.error(`Failed to upload file to ${API_BASE}/files:`, e);
                     showError('Failed to upload file');
                 } finally {
                     document.getElementById('fileInput').value = '';
@@ -483,7 +524,12 @@ async def serve_mvp_console():
             async function loadThreadFiles() {
                 if (!currentThreadId) return;
                 try {
-                    const res = await fetch(`${API_URL}/threads/${currentThreadId}/files`);
+                    const res = await fetch(`${API_BASE}/threads/${currentThreadId}/files`);
+
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}: Failed to load files`);
+                    }
+
                     const data = await res.json();
                     const fileList = document.getElementById('fileList');
                     fileList.innerHTML = '';
@@ -518,11 +564,13 @@ async def serve_mvp_console():
                             delBtn.style.fontSize = '16px';
                             delBtn.onclick = async () => {
                                 try {
-                                    const res = await fetch(`${API_URL}/files/${f.id}`, { method: 'DELETE' });
-                                    if (res.ok) {
-                                        await loadThreadFiles();
+                                    const res = await fetch(`${API_BASE}/files/${f.id}`, { method: 'DELETE' });
+                                    if (!res.ok) {
+                                        throw new Error(`HTTP ${res.status}: Failed to delete file`);
                                     }
+                                    await loadThreadFiles();
                                 } catch (e) {
+                                    console.error(`Failed to delete file from ${API_BASE}/files/${f.id}:`, e);
                                     showError('Failed to delete file');
                                 }
                             };
@@ -533,7 +581,8 @@ async def serve_mvp_console():
                         });
                     }
                 } catch (e) {
-                    // Silently fail - files might not be available yet
+                    console.error(`Failed to load thread files from ${API_BASE}/threads/${currentThreadId}/files:`, e);
+                    // Files might not be available yet - don't show error to user
                 }
             }
 
