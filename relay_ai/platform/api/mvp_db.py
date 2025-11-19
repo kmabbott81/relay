@@ -107,9 +107,22 @@ async def create_message(
     role: str,
     content: str,
     model_name: Optional[str] = None,
+    model_key: Optional[str] = None,
+    model_id: Optional[str] = None,
     token_usage_json: Optional[dict] = None,
 ) -> uuid.UUID:
-    """Create a new message in a thread."""
+    """Create a new message in a thread.
+
+    Args:
+        thread_id: Thread ID
+        user_id: User ID
+        role: Message role (user, assistant, system)
+        content: Message content
+        model_name: Legacy model name field (for backward compatibility)
+        model_key: Logical model key (e.g., "gpt-fast")
+        model_id: Actual provider model ID (e.g., "gpt-4o-mini")
+        token_usage_json: Token usage metadata
+    """
     conn = await get_connection()
     try:
         # Update thread's updated_at timestamp
@@ -121,14 +134,16 @@ async def create_message(
         # Insert message
         row = await conn.fetchrow(
             """
-            INSERT INTO mvp_messages (thread_id, user_id, role, model_name, content, token_usage_json, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6::jsonb, NOW())
+            INSERT INTO mvp_messages (thread_id, user_id, role, model_name, model_key, model_id, content, token_usage_json, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, NOW())
             RETURNING id
             """,
             thread_id,
             user_id,
             role,
             model_name,
+            model_key,
+            model_id,
             content,
             token_usage_jsonb,
         )
@@ -146,7 +161,7 @@ async def list_messages(thread_id: uuid.UUID) -> list[dict]:
     try:
         rows = await conn.fetch(
             """
-            SELECT id, thread_id, user_id, role, model_name, content, token_usage_json, created_at
+            SELECT id, thread_id, user_id, role, model_name, model_key, model_id, content, token_usage_json, created_at
             FROM mvp_messages
             WHERE thread_id = $1
             ORDER BY created_at ASC
@@ -164,6 +179,137 @@ async def verify_thread_ownership(thread_id: uuid.UUID, user_id: uuid.UUID) -> b
     conn = await get_connection()
     try:
         row = await conn.fetchrow("SELECT 1 FROM mvp_threads WHERE id = $1 AND user_id = $2", thread_id, user_id)
+        return row is not None
+    finally:
+        if conn and _pool:
+            await _pool.release(conn)
+
+
+# File Management Functions
+
+
+async def create_file(
+    user_id: uuid.UUID,
+    thread_id: uuid.UUID,
+    filename: str,
+    file_size: int,
+    mime_type: str,
+    storage_path: str,
+) -> uuid.UUID:
+    """
+    Create a new file record in the database.
+
+    Args:
+        user_id: User ID who uploaded the file
+        thread_id: Thread ID where the file is attached
+        filename: Original filename
+        file_size: File size in bytes
+        mime_type: MIME type (e.g., 'application/pdf')
+        storage_path: Path where file is stored (e.g., '/tmp/uuid-filename')
+
+    Returns:
+        File ID (UUID)
+    """
+    conn = await get_connection()
+    try:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO mvp_files (user_id, thread_id, filename, file_size, mime_type, storage_path, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            RETURNING id
+            """,
+            user_id,
+            thread_id,
+            filename,
+            file_size,
+            mime_type,
+            storage_path,
+        )
+        file_id = row["id"]
+        logger.info(f"Created file {file_id} ({filename}) for thread {thread_id}")
+        return file_id
+    finally:
+        if conn and _pool:
+            await _pool.release(conn)
+
+
+async def get_file(file_id: uuid.UUID) -> Optional[dict]:
+    """Get a file record by ID."""
+    conn = await get_connection()
+    try:
+        row = await conn.fetchrow(
+            """
+            SELECT id, user_id, thread_id, filename, file_size, mime_type, storage_path, created_at
+            FROM mvp_files
+            WHERE id = $1
+            """,
+            file_id,
+        )
+        return dict(row) if row else None
+    finally:
+        if conn and _pool:
+            await _pool.release(conn)
+
+
+async def list_thread_files(thread_id: uuid.UUID) -> list[dict]:
+    """List all files attached to a thread."""
+    conn = await get_connection()
+    try:
+        rows = await conn.fetch(
+            """
+            SELECT id, user_id, thread_id, filename, file_size, mime_type, storage_path, created_at
+            FROM mvp_files
+            WHERE thread_id = $1
+            ORDER BY created_at DESC
+            """,
+            thread_id,
+        )
+        return [dict(row) for row in rows]
+    finally:
+        if conn and _pool:
+            await _pool.release(conn)
+
+
+async def list_user_files(user_id: uuid.UUID, limit: int = 100) -> list[dict]:
+    """List all files uploaded by a user."""
+    conn = await get_connection()
+    try:
+        rows = await conn.fetch(
+            """
+            SELECT id, user_id, thread_id, filename, file_size, mime_type, storage_path, created_at
+            FROM mvp_files
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2
+            """,
+            user_id,
+            limit,
+        )
+        return [dict(row) for row in rows]
+    finally:
+        if conn and _pool:
+            await _pool.release(conn)
+
+
+async def delete_file(file_id: uuid.UUID) -> bool:
+    """Delete a file record. Returns True if deleted, False if not found."""
+    conn = await get_connection()
+    try:
+        result = await conn.execute("DELETE FROM mvp_files WHERE id = $1", file_id)
+        deleted = result != "DELETE 0"
+        if deleted:
+            logger.info(f"Deleted file {file_id}")
+        return deleted
+    finally:
+        if conn and _pool:
+            await _pool.release(conn)
+
+
+async def verify_file_ownership(file_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    """Verify that a file belongs to a user."""
+    conn = await get_connection()
+    try:
+        row = await conn.fetchrow("SELECT 1 FROM mvp_files WHERE id = $1 AND user_id = $2", file_id, user_id)
         return row is not None
     finally:
         if conn and _pool:

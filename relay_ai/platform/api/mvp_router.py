@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
@@ -439,12 +439,102 @@ async def serve_mvp_console():
                 }
             }
 
-            function handleFileSelect(e) {
+            async function handleFileSelect(e) {
                 const file = e.target.files[0];
                 if (!file) return;
-                // TODO: Implement file upload to /mvp/files endpoint once available
-                showError('File upload coming soon! Backend endpoints ready.');
-                document.getElementById('fileInput').value = '';
+
+                if (!currentThreadId) {
+                    showError('Create a thread first before uploading files');
+                    document.getElementById('fileInput').value = '';
+                    return;
+                }
+
+                // Create FormData for multipart upload
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('thread_id', currentThreadId);
+
+                try {
+                    document.getElementById('sendBtn').disabled = true;
+                    const res = await fetch(`${API_URL}/files?thread_id=${currentThreadId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!res.ok) {
+                        const error = await res.json();
+                        showError(`Upload failed: ${error.detail || 'Unknown error'}`);
+                    } else {
+                        const data = await res.json();
+                        const msg = `📎 File uploaded: ${data.filename} (${(data.file_size / 1024).toFixed(1)}KB)`;
+                        showError(msg); // Reuse for success message
+
+                        // Refresh file list
+                        await loadThreadFiles();
+                    }
+                } catch (e) {
+                    showError('Failed to upload file');
+                } finally {
+                    document.getElementById('fileInput').value = '';
+                    document.getElementById('sendBtn').disabled = false;
+                }
+            }
+
+            async function loadThreadFiles() {
+                if (!currentThreadId) return;
+                try {
+                    const res = await fetch(`${API_URL}/threads/${currentThreadId}/files`);
+                    const data = await res.json();
+                    const fileList = document.getElementById('fileList');
+                    fileList.innerHTML = '';
+
+                    if (data.files && data.files.length > 0) {
+                        const title = document.createElement('div');
+                        title.style.fontSize = '11px';
+                        title.style.color = '#666';
+                        title.style.marginTop = '10px';
+                        title.textContent = `${data.files.length} file(s):`;
+                        fileList.appendChild(title);
+
+                        data.files.forEach(f => {
+                            const item = document.createElement('div');
+                            item.style.fontSize = '11px';
+                            item.style.padding = '5px';
+                            item.style.background = '#f0f0f0';
+                            item.style.borderRadius = '3px';
+                            item.style.marginBottom = '5px';
+                            item.style.display = 'flex';
+                            item.style.justifyContent = 'space-between';
+                            item.style.alignItems = 'center';
+
+                            const info = document.createElement('span');
+                            info.textContent = `📎 ${f.filename} (${(f.file_size / 1024).toFixed(1)}KB)`;
+
+                            const delBtn = document.createElement('button');
+                            delBtn.textContent = '×';
+                            delBtn.style.border = 'none';
+                            delBtn.style.background = 'none';
+                            delBtn.style.cursor = 'pointer';
+                            delBtn.style.fontSize = '16px';
+                            delBtn.onclick = async () => {
+                                try {
+                                    const res = await fetch(`${API_URL}/files/${f.id}`, { method: 'DELETE' });
+                                    if (res.ok) {
+                                        await loadThreadFiles();
+                                    }
+                                } catch (e) {
+                                    showError('Failed to delete file');
+                                }
+                            };
+
+                            item.appendChild(info);
+                            item.appendChild(delBtn);
+                            fileList.appendChild(item);
+                        });
+                    }
+                } catch (e) {
+                    // Silently fail - files might not be available yet
+                }
             }
 
             function formatDate(dateStr) {
@@ -816,3 +906,182 @@ async def list_thread_messages(thread_id: UUID, user_id: Optional[UUID] = None):
     except Exception as e:
         logger.error("Failed to list messages", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve messages") from e
+
+
+# File Management Endpoints
+
+
+@router.post("/files")
+async def upload_file(thread_id: UUID, file: UploadFile = File(...), user_id: Optional[UUID] = None):
+    """
+    Upload a file to a thread.
+
+    Accepts any file type, stores it with database metadata.
+    Option B: Full database integration with persistent storage.
+    """
+    if not os.getenv("DATABASE_URL"):
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    # Get user_id (default to Kyle if not provided)
+    if not user_id:
+        try:
+            user_id = await mvp_db.get_default_user_id()
+        except Exception as e:
+            logger.error("Failed to get default user", exc_info=True)
+            raise HTTPException(status_code=500, detail="Failed to retrieve user information") from e
+
+    try:
+        # Verify thread exists
+        thread = await mvp_db.get_thread(thread_id)
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        # Verify ownership
+        is_owner = await mvp_db.verify_thread_ownership(thread_id, user_id)
+        if not is_owner:
+            raise HTTPException(status_code=403, detail="You do not have access to this thread")
+
+        # Read file content
+        content = await file.read()
+        file_size = len(content)
+
+        # Validate file size (50MB max)
+        max_size = 50 * 1024 * 1024
+        if file_size > max_size:
+            raise HTTPException(status_code=413, detail=f"File too large. Max {max_size / 1024 / 1024}MB")
+
+        # Create temp storage path (in production, this would be S3/cloud storage)
+        # For now, use a deterministic path based on UUID
+        file_id = UUID(str(__import__("uuid").uuid4()))
+        storage_dir = "/tmp/relay_files"
+        os.makedirs(storage_dir, exist_ok=True)
+        storage_path = os.path.join(storage_dir, f"{file_id}_{file.filename}")
+
+        # Write file to storage
+        with open(storage_path, "wb") as f:
+            f.write(content)
+
+        # Create file record in database
+        file_record_id = await mvp_db.create_file(
+            user_id=user_id,
+            thread_id=thread_id,
+            filename=file.filename,
+            file_size=file_size,
+            mime_type=file.content_type or "application/octet-stream",
+            storage_path=storage_path,
+        )
+
+        logger.info(f"File uploaded: {file.filename} ({file_size} bytes) to thread {thread_id}")
+
+        return {
+            "file_id": str(file_record_id),
+            "filename": file.filename,
+            "file_size": file_size,
+            "mime_type": file.content_type,
+            "created_at": datetime.now().isoformat(),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("File upload failed", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to upload file") from e
+
+
+@router.get("/threads/{thread_id}/files")
+async def list_thread_files(thread_id: UUID, user_id: Optional[UUID] = None):
+    """
+    List all files in a thread.
+
+    Returns file metadata (filename, size, uploaded date).
+    """
+    if not os.getenv("DATABASE_URL"):
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    # Get user_id (default to Kyle if not provided)
+    if not user_id:
+        try:
+            user_id = await mvp_db.get_default_user_id()
+        except Exception as e:
+            logger.error("Failed to get default user", exc_info=True)
+            raise HTTPException(status_code=500, detail="Failed to retrieve user information") from e
+
+    try:
+        # Verify thread exists and ownership
+        thread = await mvp_db.get_thread(thread_id)
+        if not thread:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        is_owner = await mvp_db.verify_thread_ownership(thread_id, user_id)
+        if not is_owner:
+            raise HTTPException(status_code=403, detail="You do not have access to this thread")
+
+        # Get files
+        files = await mvp_db.list_thread_files(thread_id)
+
+        # Convert datetime and UUID objects to strings
+        for file_record in files:
+            file_record["created_at"] = file_record["created_at"].isoformat()
+            file_record["id"] = str(file_record["id"])
+            file_record["thread_id"] = str(file_record["thread_id"])
+            file_record["user_id"] = str(file_record["user_id"])
+
+        return {"files": files}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to list thread files", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve files") from e
+
+
+@router.delete("/files/{file_id}")
+async def delete_file(file_id: UUID, user_id: Optional[UUID] = None):
+    """
+    Delete a file from a thread.
+
+    Removes file metadata from database and storage.
+    Only file owner can delete.
+    """
+    if not os.getenv("DATABASE_URL"):
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    # Get user_id (default to Kyle if not provided)
+    if not user_id:
+        try:
+            user_id = await mvp_db.get_default_user_id()
+        except Exception as e:
+            logger.error("Failed to get default user", exc_info=True)
+            raise HTTPException(status_code=500, detail="Failed to retrieve user information") from e
+
+    try:
+        # Verify file exists
+        file_record = await mvp_db.get_file(file_id)
+        if not file_record:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        # Verify ownership
+        is_owner = await mvp_db.verify_file_ownership(file_id, user_id)
+        if not is_owner:
+            raise HTTPException(status_code=403, detail="You do not have access to this file")
+
+        # Delete file from storage
+        storage_path = file_record.get("storage_path")
+        if storage_path and os.path.exists(storage_path):
+            try:
+                os.remove(storage_path)
+            except Exception as e:
+                logger.warning(f"Failed to delete file from storage: {e}")
+
+        # Delete file record from database
+        await mvp_db.delete_file(file_id)
+
+        logger.info(f"File deleted: {file_id}")
+
+        return {"success": True, "message": "File deleted successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to delete file", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to delete file") from e
