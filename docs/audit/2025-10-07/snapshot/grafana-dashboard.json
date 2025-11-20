@@ -1,0 +1,372 @@
+{
+  "dashboard": {
+    "title": "Relay Actions API - Golden Signals",
+    "uid": "relay-golden-signals",
+    "version": 1,
+    "editable": true,
+    "timezone": "utc",
+    "refresh": "30s",
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate (RPM)",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{path=~\"/actions.*\"}[5m])) * 60",
+            "legendFormat": "Total RPM",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{path=\"/actions\"}[5m])) * 60",
+            "legendFormat": "List RPM",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{path=\"/actions/execute\"}[5m])) * 60",
+            "legendFormat": "Execute RPM",
+            "refId": "C"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{path=\"/actions/preview\"}[5m])) * 60",
+            "legendFormat": "Preview RPM",
+            "refId": "D"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "rpm",
+            "label": "Requests per Minute"
+          }
+        ],
+        "description": "Request throughput by endpoint. Shows traffic patterns and load distribution."
+      },
+      {
+        "id": 2,
+        "title": "Error Rate (%)",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 0,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "(sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))) * 100",
+            "legendFormat": "5xx Error Rate",
+            "refId": "A"
+          },
+          {
+            "expr": "(sum(rate(http_requests_total{status=\"429\"}[5m])) / sum(rate(http_requests_total[5m]))) * 100",
+            "legendFormat": "Rate Limit (429) Rate",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Error Rate %",
+            "max": 5
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [1],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "60s",
+          "handler": 1,
+          "name": "Error Rate > 1% SLO",
+          "noDataState": "no_data",
+          "notifications": []
+        },
+        "description": "Error rate tracking. SLO target: <1% for 5xx errors."
+      },
+      {
+        "id": 3,
+        "title": "Latency (p50/p95/p99) - Light Endpoints",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 8,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{path=~\"/actions|/audit\"}[5m]))",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{path=~\"/actions|/audit\"}[5m]))",
+            "legendFormat": "p95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{path=~\"/actions|/audit\"}[5m]))",
+            "legendFormat": "p99 (SLO: 50ms)",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "s",
+            "label": "Latency",
+            "max": 0.1
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 0.05,
+            "colorMode": "critical",
+            "op": "gt",
+            "fill": true,
+            "line": true
+          }
+        ],
+        "description": "Light endpoint latency distribution. SLO target: p99 ≤ 50ms."
+      },
+      {
+        "id": 4,
+        "title": "Latency (p50/p95) - Webhook Execute",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 8,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{path=\"/actions/execute\"}[5m]))",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{path=\"/actions/execute\"}[5m]))",
+            "legendFormat": "p95 (SLO: 1.2s)",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{path=\"/actions/execute\"}[5m]))",
+            "legendFormat": "p99",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "s",
+            "label": "Latency",
+            "max": 2
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 1.2,
+            "colorMode": "critical",
+            "op": "gt",
+            "fill": true,
+            "line": true
+          }
+        ],
+        "description": "Webhook execute latency distribution. SLO target: p95 ≤ 1.2s."
+      },
+      {
+        "id": 5,
+        "title": "Rate Limit Hits (429s)",
+        "type": "stat",
+        "gridPos": {
+          "x": 0,
+          "y": 16,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(increase(http_requests_total{status=\"429\"}[24h]))",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "unit": "short",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "description": "Total rate limit breaches in last 24h."
+      },
+      {
+        "id": 6,
+        "title": "SLO Error Budget Remaining",
+        "type": "gauge",
+        "gridPos": {
+          "x": 6,
+          "y": 16,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "(1 - (sum(rate(http_requests_total{status=~\"5..\"}[7d])) / sum(rate(http_requests_total[7d])))) * 100",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true,
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "thresholds": [
+          {
+            "value": 0,
+            "color": "red"
+          },
+          {
+            "value": 80,
+            "color": "yellow"
+          },
+          {
+            "value": 99,
+            "color": "green"
+          }
+        ],
+        "description": "Error budget remaining (7-day window). Green: >99%, Yellow: 80-99%, Red: <80%."
+      },
+      {
+        "id": 7,
+        "title": "Service Availability (Uptime %)",
+        "type": "stat",
+        "gridPos": {
+          "x": 12,
+          "y": 16,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "avg_over_time(up{job=\"relay-backend\"}[30d]) * 100",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "none",
+          "colorMode": "value",
+          "unit": "percent",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "thresholds": [
+          {
+            "value": 0,
+            "color": "red"
+          },
+          {
+            "value": 99,
+            "color": "yellow"
+          },
+          {
+            "value": 99.9,
+            "color": "green"
+          }
+        ],
+        "description": "30-day uptime. SLO target: ≥99.9%."
+      },
+      {
+        "id": 8,
+        "title": "Total Requests (24h)",
+        "type": "stat",
+        "gridPos": {
+          "x": 18,
+          "y": 16,
+          "w": 6,
+          "h": 4
+        },
+        "targets": [
+          {
+            "expr": "sum(increase(http_requests_total[24h]))",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "unit": "short",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "description": "Total API requests in last 24 hours."
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "datasource": "Prometheus",
+          "enable": true,
+          "expr": "ALERTS{alertname=~\".*\", alertstate=\"firing\"}",
+          "iconColor": "red",
+          "name": "Alerts",
+          "step": "60s",
+          "tagKeys": "alertname",
+          "textFormat": "{{ $labels.alertname }}",
+          "titleFormat": "Alert"
+        }
+      ]
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "datasource",
+          "type": "datasource",
+          "query": "prometheus",
+          "current": {
+            "text": "Prometheus",
+            "value": "Prometheus"
+          }
+        }
+      ]
+    }
+  },
+  "meta": {
+    "version": "sprint-51-phase3",
+    "generated_at": "2025-10-07T00:00:00Z",
+    "grafana_version": ">=9.0",
+    "description": "Golden signals dashboard for Relay Actions API. Tracks request rate, errors, latency, and SLO compliance."
+  }
+}

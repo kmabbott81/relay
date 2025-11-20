@@ -1,0 +1,5 @@
+# Test Coverage Report - 2025-10-07
+
+## Coverage by Module
+/usr/bin/bash: line 12: pytest: command not found
+Coverage run completed with issues

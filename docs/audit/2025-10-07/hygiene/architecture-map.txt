@@ -1,0 +1,159 @@
+# Architecture Map - 2025-10-07
+
+## Module Structure
+
+### agents/
+  - openai_adapter.py
+  Total files: 1
+
+### classify/
+  - labels.py
+  - policy.py
+  Total files: 2
+
+### compliance/
+  - api.py
+  - holds.py
+  Total files: 2
+
+### config/
+  - validate.py
+  Total files: 1
+
+### connectors/
+  - base.py
+  - base.py
+  - box.py
+  - circuit.py
+  - cp_cal.py
+  - dropbox.py
+  - email.py
+  - gcs.py
+  - gdrive.py
+  - gmail.py
+  - http_client.py
+  - http_mock.py
+  - ingest.py
+  - metrics.py
+  - mock_outlook.py
+  - notion.py
+  - oauth2.py
+  - onedrive.py
+  - outlook_api.py
+  - registry.py
+  - retry.py
+  - s3.py
+  - sandbox.py
+  - sharepoint.py
+  - slack.py
+  - teams.py
+  - teams_old.py
+  - webhooks.py
+  Total files: 28
+
+### cost/
+  - alerts.py
+  - anomaly.py
+  - budgets.py
+  - enforcer.py
+  - ledger.py
+  Total files: 5
+
+### crypto/
+  - envelope.py
+  - keyring.py
+  Total files: 2
+
+### deploy/
+  - regions.py
+  - traffic_manager.py
+  Total files: 2
+
+### graph/
+  - actions.py
+  - index.py
+  - search.py
+  Total files: 3
+
+### nl/
+  - executor.py
+  - intents.py
+  - ner_contacts.py
+  - planner.py
+  Total files: 4
+
+### onboarding/
+  - wizard.py
+  Total files: 1
+
+### ops/
+  - health_server.py
+  Total files: 1
+
+### orchestrator/
+  - analytics.py
+  - checkpoints.py
+  - graph.py
+  - idempotency.py
+  - runner.py
+  - scheduler.py
+  - state_store.py
+  Total files: 7
+
+### queue/
+  - backoff.py
+  - dlq.py
+  - memory.py
+  - persistent_queue.py
+  - ratelimit.py
+  - redis.py
+  - retry.py
+  - worker.py
+  - worker_v28_backup.py
+  Total files: 9
+
+### scale/
+  - autoscaler.py
+  - signals.py
+  - worker_pool.py
+  Total files: 3
+
+### security/
+  - audit.py
+  - authz.py
+  - delegation.py
+  - rbac_check.py
+  - teams.py
+  - workspaces.py
+  Total files: 6
+
+### storage/
+  - lifecycle.py
+  - secure_io.py
+  - tiered_store.py
+  Total files: 3
+
+### telemetry/
+  - middleware.py
+  - noop.py
+  - prom.py
+  Total files: 3
+
+### template_registry/
+  - loader.py
+  - registry.py
+  - schemas.py
+  Total files: 3
+
+### workflows/
+  - adapter.py
+  - archive_rotation_demo.py
+  - inbox_drive_sweep.py
+  - meeting_transcript_brief.py
+  - weekly_report_pack.py
+  Total files: 5
+
+
+## Summary
+Total modules: 20
+Total source files: 91

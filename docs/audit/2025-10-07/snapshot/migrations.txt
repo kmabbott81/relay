@@ -1,0 +1,9 @@
+# Alembic Migration History - 2025-10-07
+
+## Current Head
+/usr/bin/bash: line 14: alembic: command not found
+No current version
+
+## Migration History
+/usr/bin/bash: line 17: alembic: command not found
+No history

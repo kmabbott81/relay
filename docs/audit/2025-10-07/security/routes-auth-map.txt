@@ -1,0 +1,13 @@
+# Routes Authorization Map - 2025-10-07
+
+| Path | Methods | Auth Required | Name |
+|------|---------|---------------|------|
+| / | GET | no | root |
+| /api/render | POST | no | render_template |
+| /api/templates | GET | no | get_templates |
+| /api/triage | POST | no | triage_content |
+| /docs | HEAD,GET | unknown | swagger_ui_html |
+| /docs/oauth2-redirect | HEAD,GET | unknown | swagger_ui_redirect |
+| /metrics | GET | no | metrics |
+| /openapi.json | HEAD,GET | unknown | openapi |
+| /redoc | HEAD,GET | unknown | redoc_html |

@@ -1,0 +1,20 @@
+# Security Headers Check - 2025-10-07
+
+## Production Headers (_stcore/health)
+HTTP/1.1 405 Method Not Allowed
+Allow: GET
+Content-Length: 31
+Content-Type: application/json
+Date: Tue, 07 Oct 2025 12:30:01 GMT
+Server: railway-edge
+X-Railway-Edge: railway/us-west2
+X-Railway-Request-Id: 2MrE6ekjR3-rkunrxtoGcA
+X-Request-Id: 80141906-7f3e-4147-abda-0e098280878e
+
+
+## Expected Headers
+- Strict-Transport-Security
+- Content-Security-Policy
+- Referrer-Policy
+- X-Content-Type-Options
+- X-Frame-Options

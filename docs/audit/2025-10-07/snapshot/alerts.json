@@ -1,0 +1,122 @@
+{
+  "alerts": [
+    {
+      "name": "LightEndpointLatencyHigh",
+      "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{path=~\"/actions|/audit\"}[5m])) > 0.05",
+      "for": "5m",
+      "labels": {
+        "severity": "warning",
+        "component": "api"
+      },
+      "annotations": {
+        "summary": "Light endpoint p99 latency exceeds 50ms",
+        "description": "The p99 latency for light endpoints (list/preview/audit) is {{ $value }}s, which exceeds the 50ms SLO target. Check for slow database queries or increased load.",
+        "runbook_url": "https://github.com/kmabbott81/djp-workflow/blob/main/docs/observability/SLOs.md#1-light-endpoints-listpreview---latency"
+      }
+    },
+    {
+      "name": "WebhookExecuteLatencyHigh",
+      "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{path=\"/actions/execute\"}[5m])) > 1.2",
+      "for": "5m",
+      "labels": {
+        "severity": "warning",
+        "component": "webhook"
+      },
+      "annotations": {
+        "summary": "Webhook execute p95 latency exceeds 1.2s",
+        "description": "The p95 latency for webhook executions is {{ $value }}s, which exceeds the 1.2s SLO target. Check webhook receiver latency or network issues.",
+        "runbook_url": "https://github.com/kmabbott81/djp-workflow/blob/main/docs/observability/SLOs.md#2-webhook-execute---latency"
+      }
+    },
+    {
+      "name": "ActionsErrorRateHigh",
+      "expr": "(sum(rate(http_requests_total{path=~\"/actions.*\", status=~\"5..\"}[5m])) / sum(rate(http_requests_total{path=~\"/actions.*\"}[5m]))) > 0.01",
+      "for": "5m",
+      "labels": {
+        "severity": "critical",
+        "component": "api"
+      },
+      "annotations": {
+        "summary": "Actions API error rate exceeds 1%",
+        "description": "The 5xx error rate for /actions endpoints is {{ $value | humanizePercentage }}, which exceeds the 1% SLO target. Check logs for exceptions and consider rollback if recent deploy.",
+        "runbook_url": "https://github.com/kmabbott81/djp-workflow/blob/main/docs/observability/SLOs.md#3-error-rate"
+      }
+    },
+    {
+      "name": "HighErrorStreak",
+      "expr": "(sum(rate(http_requests_total{status=~\"5..\"}[1m])) / sum(rate(http_requests_total[1m]))) > 0.10",
+      "for": "3m",
+      "labels": {
+        "severity": "page",
+        "component": "api"
+      },
+      "annotations": {
+        "summary": "Sustained high error rate - immediate action required",
+        "description": "The overall 5xx error rate is {{ $value | humanizePercentage }} (>10%) for 3+ minutes. This indicates a severe outage. Page on-call engineer immediately.",
+        "runbook_url": "https://github.com/kmabbott81/djp-workflow/blob/main/docs/observability/SLOs.md#3-error-rate"
+      }
+    },
+    {
+      "name": "RateLimitBreaches",
+      "expr": "rate(rate_limit_breaches_total[10m]) > 0",
+      "for": "10m",
+      "labels": {
+        "severity": "info",
+        "component": "rate-limiter"
+      },
+      "annotations": {
+        "summary": "Rate limit breaches detected",
+        "description": "Rate limit breaches are occurring at {{ $value }} per second. Review workspace usage and consider increasing limits if legitimate traffic.",
+        "runbook_url": "https://github.com/kmabbott81/djp-workflow/blob/main/docs/SPRINT-51-PHASE-2-STATUS.md#1-durable-rate-limiting-"
+      }
+    },
+    {
+      "name": "ServiceDown",
+      "expr": "up{job=\"relay-backend\"} == 0",
+      "for": "1m",
+      "labels": {
+        "severity": "page",
+        "component": "infrastructure"
+      },
+      "annotations": {
+        "summary": "Relay backend service is down",
+        "description": "The Relay backend service has been unreachable for 1+ minutes. Health checks are failing. Check Railway dashboard and logs immediately.",
+        "runbook_url": "https://github.com/kmabbott81/djp-workflow/blob/main/docs/observability/SLOs.md#4-availability"
+      }
+    },
+    {
+      "name": "DatabaseConnectionPoolExhausted",
+      "expr": "db_connection_pool_active / db_connection_pool_max > 0.9",
+      "for": "5m",
+      "labels": {
+        "severity": "warning",
+        "component": "database"
+      },
+      "annotations": {
+        "summary": "Database connection pool near capacity",
+        "description": "Database connection pool is at {{ $value | humanizePercentage }} capacity. Consider increasing pool size or optimizing query patterns.",
+        "runbook_url": "https://github.com/kmabbott81/djp-workflow/blob/main/docs/observability/SLOs.md"
+      }
+    },
+    {
+      "name": "RedisDown",
+      "expr": "redis_up == 0",
+      "for": "5m",
+      "labels": {
+        "severity": "warning",
+        "component": "cache"
+      },
+      "annotations": {
+        "summary": "Redis is unavailable",
+        "description": "Redis has been unavailable for 5+ minutes. Rate limiting will fall back to in-process mode, which may be less accurate in distributed deployments.",
+        "runbook_url": "https://github.com/kmabbott81/djp-workflow/blob/main/docs/SPRINT-51-PHASE-2-STATUS.md#1-durable-rate-limiting-"
+      }
+    }
+  ],
+  "metadata": {
+    "version": "sprint-51-phase3",
+    "generated_at": "2025-10-07T00:00:00Z",
+    "prometheus_version": ">=2.40",
+    "notes": "Alert rules for Relay Actions API SLOs. Import into Prometheus via alerting rules file or Grafana alert groups."
+  }
+}
