@@ -20,7 +20,7 @@ This changelog tracks releases for the workspace-scoped, zero-downtime migration
 ## [1.0.0] - 2025-10-18 - Zero-Downtime Schema Migration Complete
 
 **Release:** October 18, 2025
-**Tag:** [v1.0.0](https://github.com/kmabbott81/djp-workflow/releases/tag/v1.0.0)
+**Tag:** [v1.0.0](https://github.com/kmabbott81/relay/releases/tag/v1.0.0)
 **Status:** ✅ **Production-Ready** | Deployment Risk: **Low**
 
 ### Overview
@@ -29,7 +29,7 @@ This marks the **first production-safe, fully audited release** of the Relay AI 
 
 ### Phase 1 – Dual-Write Migration (v0.1.5 + v0.1.6-checkpoint1)
 
-**PR:** [#45](https://github.com/kmabbott81/djp-workflow/pull/45)
+**PR:** [#45](https://github.com/kmabbott81/relay/pull/45)
 
 - ✅ Atomic dual-write pipeline: legacy → workspace-scoped schema
 - ✅ Redis pipeline ensures all-or-nothing semantics
@@ -41,7 +41,7 @@ This marks the **first production-safe, fully audited release** of the Relay AI 
 
 ### Phase 2 – Security & Read-Routing (v0.1.7-phase2.2-final)
 
-**PR:** [#46](https://github.com/kmabbott81/djp-workflow/pull/46)
+**PR:** [#46](https://github.com/kmabbott81/relay/pull/46)
 
 - ✅ Workspace isolation enforced: `/ai/jobs`, `/ai/execute`, `/ai/jobs/{job_id}` endpoints
 - ✅ Read-routing with new→old fallback, workspace validation on every path
@@ -56,7 +56,7 @@ This marks the **first production-safe, fully audited release** of the Relay AI 
 
 ### Phase 3 – Backfill Engine (v1.0.0)
 
-**PR:** [#47](https://github.com/kmabbott81/djp-workflow/pull/47)
+**PR:** [#47](https://github.com/kmabbott81/relay/pull/47)
 
 - ✅ `scripts/backfill_redis_keys.py` — CLI-driven resumable migration
 - ✅ Idempotent (safe to run 2x), resumable (cursor tracked), rate-limited (tunable RPS)

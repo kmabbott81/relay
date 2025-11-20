@@ -64,10 +64,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/kmabbott81/djp-workflow"
-Documentation = "https://github.com/kmabbott81/djp-workflow/blob/main/docs/OPERATIONS.md"
-Repository = "https://github.com/kmabbott81/djp-workflow"
-Issues = "https://github.com/kmabbott81/djp-workflow/issues"
+Homepage = "https://github.com/kmabbott81/relay"
+Documentation = "https://github.com/kmabbott81/relay/blob/main/docs/OPERATIONS.md"
+Repository = "https://github.com/kmabbott81/relay"
+Issues = "https://github.com/kmabbott81/relay/issues"
 
 [project.scripts]
 djp = "src.run_workflow:main"

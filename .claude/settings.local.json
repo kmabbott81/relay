@@ -101,7 +101,9 @@
       "Bash(if grep -q ^.env$ .gitignore)",
       "Bash(then echo '✓ .env is properly protected in .gitignore')",
       "Bash(else echo '⚠ .env NOT in .gitignore - adding now...')",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(.gitignore)",
+      "Bash(powershell -ExecutionPolicy Bypass -File rename_complete.ps1)"
     ],
     "deny": [],
     "ask": []
